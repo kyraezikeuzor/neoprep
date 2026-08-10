@@ -100,7 +100,10 @@ export async function getRandomQuestion(
     }
   }
 
-  let query = supabase
+  // Reassigning PostgrestFilterBuilder with many `.eq`/`.in`/`.not` calls
+  // makes TS "type instantiation excessively deep". Keep the builder untyped.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let query: any = supabase
     .from("questions")
     .select(QUESTION_SELECT)
     .not("correct_answer", "is", null)
