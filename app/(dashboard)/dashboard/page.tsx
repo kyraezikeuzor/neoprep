@@ -59,7 +59,7 @@ export default async function DashboardPage() {
             </p>
           </div>
           <p className="mt-2 font-sans text-sm font-medium text-arc-muted">
-            {errorCount === 0 ? "No missed questions — nice work" : "View missed questions →"}
+            {errorCount === 0 ? "No missed questions" : "View missed questions →"}
           </p>
         </Link>
 
