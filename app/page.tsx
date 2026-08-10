@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import LandingPage from "@/components/LandingPage";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function RootPage() {
@@ -7,9 +8,10 @@ export default async function RootPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
+  // Returning / signed-in users skip the landing page and go straight in.
   if (user) {
     redirect("/dashboard");
   }
 
-  redirect("/login");
+  return <LandingPage />;
 }
