@@ -358,9 +358,9 @@ export async function listStudentAssignments(): Promise<AssignmentListItem[]> {
   }
 
   const { data: progress } = await admin
-    .from("assignment_progress")
+    .from("attempts")
     .select("assignment_id, question_id")
-    .eq("student_id", user.id)
+    .eq("user_id", user.id)
     .in("assignment_id", ids);
 
   const countByAssignment = new Map<string, Set<string>>();
@@ -467,72 +467,38 @@ export async function getAssignmentForPractice(
     .map((id) => byId.get(id))
     .filter((q): q is Question => Boolean(q));
 
-  // Restore prior progress for this student on this assignment
+  // Restore prior progress for this student on this assignment (from attempts)
   type ProgressRow = {
     question_id: string;
     is_correct: boolean | null;
     selected_answer?: string | null;
+    attempted_at?: string | null;
   };
-  let progressRows: ProgressRow[] = [];
-  const withSelected = await admin
-    .from("assignment_progress")
-    .select("question_id, is_correct, selected_answer")
+  const { data: attemptRows, error: progressError } = await admin
+    .from("attempts")
+    .select("question_id, is_correct, selected_answer, attempted_at")
     .eq("assignment_id", assignmentId)
-    .eq("student_id", user.id);
+    .eq("user_id", user.id)
+    .order("attempted_at", { ascending: false });
 
-  if (withSelected.error) {
-    const withoutSelected = await admin
-      .from("assignment_progress")
-      .select("question_id, is_correct")
-      .eq("assignment_id", assignmentId)
-      .eq("student_id", user.id);
-    if (withoutSelected.error) {
-      console.error(
-        "getAssignmentForPractice progress error:",
-        withoutSelected.error
-      );
-    } else {
-      progressRows = (withoutSelected.data ?? []) as ProgressRow[];
-    }
-  } else {
-    progressRows = (withSelected.data ?? []) as ProgressRow[];
+  if (progressError) {
+    console.error("getAssignmentForPractice progress error:", progressError);
   }
 
-  const selectedByQuestion = new Map<string, string | null>();
-  for (const row of progressRows) {
-    if (row.selected_answer != null && row.selected_answer !== "") {
-      selectedByQuestion.set(row.question_id, row.selected_answer);
-    }
+  // Keep latest attempt per question
+  const latestByQuestion = new Map<string, ProgressRow>();
+  for (const row of (attemptRows ?? []) as ProgressRow[]) {
+    const qid = row.question_id;
+    if (!qid || latestByQuestion.has(qid)) continue;
+    latestByQuestion.set(qid, row);
   }
 
-  const missingSelected = progressRows
-    .map((r) => r.question_id)
-    .filter((id) => !selectedByQuestion.has(id));
-
-  if (missingSelected.length) {
-    const { data: attempts } = await admin
-      .from("attempts")
-      .select("question_id, selected_answer, attempted_at")
-      .eq("user_id", user.id)
-      .in("question_id", missingSelected)
-      .order("attempted_at", { ascending: false });
-
-    for (const attempt of attempts ?? []) {
-      const qid = attempt.question_id as string;
-      if (selectedByQuestion.has(qid)) continue;
-      selectedByQuestion.set(
-        qid,
-        (attempt.selected_answer as string | null) ?? null
-      );
-    }
-  }
-
-  const progress: AssignmentProgressEntry[] = progressRows
+  const progress: AssignmentProgressEntry[] = [...latestByQuestion.values()]
     .filter((row) => row.is_correct === true || row.is_correct === false)
     .map((row) => ({
       question_id: row.question_id,
       is_correct: Boolean(row.is_correct),
-      selected_answer: selectedByQuestion.get(row.question_id) ?? null,
+      selected_answer: (row.selected_answer as string | null) ?? null,
     }));
 
   return {
@@ -550,14 +516,16 @@ export async function submitAssignmentProgress(params: {
   questionId: string;
   isCorrect: boolean;
   selectedAnswer?: string;
+  timeSpentSec?: number;
 }): Promise<void> {
-  const { supabase, user } = await getAuthedUser();
+  const { user } = await getAuthedUser();
   if (!user) throw new Error("Not signed in");
 
   const membership = await getStudentBootcamp();
   if (!membership) throw new Error("Not in a bootcamp");
 
-  const { data: assignment } = await supabase
+  const admin = createAdminClient();
+  const { data: assignment } = await admin
     .from("assignments")
     .select("id")
     .eq("id", params.assignmentId)
@@ -566,69 +534,20 @@ export async function submitAssignmentProgress(params: {
 
   if (!assignment) throw new Error("Assignment not found");
 
-  const { data: existing } = await supabase
-    .from("assignment_progress")
-    .select("id")
-    .eq("assignment_id", params.assignmentId)
-    .eq("student_id", user.id)
-    .eq("question_id", params.questionId)
-    .maybeSingle();
-
-  const answeredAt = new Date().toISOString();
-  const basePayload: Record<string, unknown> = {
+  const payload: Record<string, unknown> = {
+    user_id: user.id,
+    question_id: params.questionId,
     is_correct: params.isCorrect,
-    answered_at: answeredAt,
+    assignment_id: params.assignmentId,
+    selected_answer: params.selectedAnswer ?? null,
+    time_spent_sec: params.timeSpentSec ?? null,
+    attempted_at: new Date().toISOString(),
   };
-  if (params.selectedAnswer != null) {
-    basePayload.selected_answer = params.selectedAnswer;
-  }
 
-  if (existing?.id) {
-    let { error } = await supabase
-      .from("assignment_progress")
-      .update(basePayload)
-      .eq("id", existing.id);
-    // selected_answer column may not exist yet — retry without it
-    if (error && params.selectedAnswer != null) {
-      const { error: retryError } = await supabase
-        .from("assignment_progress")
-        .update({
-          is_correct: params.isCorrect,
-          answered_at: answeredAt,
-        })
-        .eq("id", existing.id);
-      error = retryError;
-    }
-    if (error) {
-      console.error("submitAssignmentProgress update error:", error);
-      throw new Error("Could not save assignment progress");
-    }
-  } else {
-    const insertPayload: Record<string, unknown> = {
-      assignment_id: params.assignmentId,
-      student_id: user.id,
-      question_id: params.questionId,
-      is_correct: params.isCorrect,
-      answered_at: answeredAt,
-    };
-    if (params.selectedAnswer != null) {
-      insertPayload.selected_answer = params.selectedAnswer;
-    }
-    let { error } = await supabase.from("assignment_progress").insert(insertPayload);
-    if (error && params.selectedAnswer != null) {
-      const { error: retryError } = await supabase.from("assignment_progress").insert({
-        assignment_id: params.assignmentId,
-        student_id: user.id,
-        question_id: params.questionId,
-        is_correct: params.isCorrect,
-        answered_at: answeredAt,
-      });
-      error = retryError;
-    }
-    if (error) {
-      console.error("submitAssignmentProgress insert error:", error);
-      throw new Error("Could not save assignment progress");
-    }
+  const { error } = await admin.from("attempts").insert(payload);
+  if (error) {
+    console.error("submitAssignmentProgress insert error:", error);
+    throw new Error("Could not save assignment progress");
   }
 
   revalidatePath("/assignments");
@@ -940,15 +859,15 @@ export async function getBootcampRoster(
   const { data: progress } =
     studentIds.length && assignmentIds.length
       ? await admin
-          .from("assignment_progress")
-          .select("assignment_id, student_id, question_id")
+          .from("attempts")
+          .select("assignment_id, user_id, question_id")
           .in("assignment_id", assignmentIds)
-          .in("student_id", studentIds)
-      : { data: [] as { assignment_id: string; student_id: string; question_id: string }[] };
+          .in("user_id", studentIds)
+      : { data: [] as { assignment_id: string; user_id: string; question_id: string }[] };
 
   const completed = new Map<string, Set<string>>();
   for (const row of progress ?? []) {
-    const key = `${row.student_id}:${row.assignment_id}`;
+    const key = `${row.user_id}:${row.assignment_id}`;
     if (!completed.has(key)) completed.set(key, new Set());
     completed.get(key)!.add(row.question_id as string);
   }
@@ -1049,41 +968,40 @@ export async function getAdminStudentBootcampDetail(
     question_id: string;
     is_correct: boolean | null;
     selected_answer?: string | null;
+    attempted_at?: string | null;
   };
 
   let progress: ProgressRow[] = [];
   if (assignmentIds.length) {
-    const withSelected = await admin
-      .from("assignment_progress")
-      .select("assignment_id, question_id, is_correct, selected_answer")
-      .eq("student_id", studentId)
-      .in("assignment_id", assignmentIds);
+    const { data: attemptRows, error: progressError } = await admin
+      .from("attempts")
+      .select("assignment_id, question_id, is_correct, selected_answer, attempted_at")
+      .eq("user_id", studentId)
+      .in("assignment_id", assignmentIds)
+      .order("attempted_at", { ascending: false });
 
-    if (withSelected.error) {
-      const withoutSelected = await admin
-        .from("assignment_progress")
-        .select("assignment_id, question_id, is_correct")
-        .eq("student_id", studentId)
-        .in("assignment_id", assignmentIds);
-      if (withoutSelected.error) {
-        console.error(
-          "getAdminStudentBootcampDetail progress error:",
-          withoutSelected.error
-        );
-      } else {
-        progress = (withoutSelected.data ?? []).map((row) => ({
-          assignment_id: String(row.assignment_id),
-          question_id: row.question_id as string,
-          is_correct: row.is_correct as boolean | null,
-        }));
-      }
+    if (progressError) {
+      console.error(
+        "getAdminStudentBootcampDetail progress error:",
+        progressError
+      );
     } else {
-      progress = (withSelected.data ?? []).map((row) => ({
-        assignment_id: String(row.assignment_id),
-        question_id: row.question_id as string,
-        is_correct: row.is_correct as boolean | null,
-        selected_answer: (row.selected_answer as string | null) ?? null,
-      }));
+      // Latest attempt per assignment+question
+      const seen = new Set<string>();
+      for (const row of attemptRows ?? []) {
+        const aid = String(row.assignment_id);
+        const qid = row.question_id as string;
+        const key = `${aid}:${qid}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        progress.push({
+          assignment_id: aid,
+          question_id: qid,
+          is_correct: row.is_correct as boolean | null,
+          selected_answer: (row.selected_answer as string | null) ?? null,
+          attempted_at: (row.attempted_at as string | null) ?? null,
+        });
+      }
     }
   }
 
@@ -1129,30 +1047,10 @@ export async function getAdminStudentBootcampDetail(
     }
   }
 
-  // Prefer assignment_progress.selected_answer; fall back to latest attempt
   const selectedByQuestion = new Map<string, string | null>();
   for (const row of progress) {
     if (row.selected_answer != null && row.selected_answer !== "") {
       selectedByQuestion.set(row.question_id, row.selected_answer);
-    }
-  }
-
-  const missingSelected = incorrectIds.filter((id) => !selectedByQuestion.has(id));
-  if (missingSelected.length) {
-    const { data: attempts } = await admin
-      .from("attempts")
-      .select("question_id, selected_answer, attempted_at")
-      .eq("user_id", studentId)
-      .in("question_id", missingSelected)
-      .order("attempted_at", { ascending: false });
-
-    for (const attempt of attempts ?? []) {
-      const qid = attempt.question_id as string;
-      if (selectedByQuestion.has(qid)) continue;
-      selectedByQuestion.set(
-        qid,
-        (attempt.selected_answer as string | null) ?? null
-      );
     }
   }
 
@@ -1226,3 +1124,284 @@ export async function getAdminStudentBootcampDetail(
     assignments: assignmentDetails,
   };
 }
+
+export type AdminActiveSubscription = {
+  id: string;
+  student_name: string | null;
+  student_email: string | null;
+  plan: string;
+  monthly_price: number;
+  started_at: string | null;
+};
+
+export type AdminBusinessMetrics = {
+  activeSubscribers: number;
+  mrr: number;
+  newThisMonth: number;
+  canceledThisMonth: number;
+  activeSubscriptions: AdminActiveSubscription[];
+};
+
+export type AdminEngagementMetrics = {
+  questionsAnsweredThisWeek: number;
+  accuracyThisWeekPercent: number | null;
+  activeStudentsThisWeek: number;
+  assignmentCompletionRatePercent: number | null;
+};
+
+export type AdminMetrics = {
+  business: AdminBusinessMetrics;
+  engagement: AdminEngagementMetrics;
+};
+
+function startOfUtcMonth(d: Date): Date {
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1));
+}
+
+function startOfNextUtcMonth(d: Date): Date {
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1));
+}
+
+/** Monday 00:00 UTC of the week containing `d`. */
+function startOfUtcWeek(d: Date): Date {
+  const day = d.getUTCDay(); // 0 Sun .. 6 Sat
+  const daysFromMonday = (day + 6) % 7;
+  return new Date(
+    Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - daysFromMonday)
+  );
+}
+
+function endOfUtcWeek(d: Date): Date {
+  const start = startOfUtcWeek(d);
+  return new Date(start.getTime() + 7 * 24 * 60 * 60 * 1000);
+}
+
+function daysAgoIso(days: number): string {
+  return new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+}
+
+export async function getAdminMetrics(): Promise<AdminMetrics> {
+  await requireAdmin();
+  const admin = createAdminClient();
+  const now = new Date();
+  const monthStart = startOfUtcMonth(now).toISOString();
+  const monthEnd = startOfNextUtcMonth(now).toISOString();
+  const weekStart = startOfUtcWeek(now).toISOString();
+  const weekEnd = endOfUtcWeek(now).toISOString();
+  const last7Days = daysAgoIso(7);
+
+  const [
+    activeSubsResult,
+    newSubsResult,
+    canceledSubsResult,
+    weekAttemptsResult,
+    bootcampStudentsResult,
+  ] = await Promise.all([
+    admin
+      .from("subscriptions")
+      .select("id, plan, monthly_price, started_at, status, student_id")
+      .eq("status", "active")
+      .eq("plan", "bootcamp")
+      .order("started_at", { ascending: false }),
+    admin
+      .from("subscriptions")
+      .select("id", { count: "exact", head: true })
+      .eq("plan", "bootcamp")
+      .gte("started_at", monthStart)
+      .lt("started_at", monthEnd),
+    admin
+      .from("subscriptions")
+      .select("id", { count: "exact", head: true })
+      .eq("plan", "bootcamp")
+      .gte("canceled_at", monthStart)
+      .lt("canceled_at", monthEnd),
+    admin
+      .from("attempts")
+      .select("user_id, is_correct")
+      .gte("attempted_at", last7Days),
+    admin.from("students").select("id, bootcamp_id").not("bootcamp_id", "is", null),
+  ]);
+
+  if (activeSubsResult.error) {
+    console.error("getAdminMetrics active subs error:", activeSubsResult.error);
+  }
+  if (newSubsResult.error) {
+    console.error("getAdminMetrics new subs error:", newSubsResult.error);
+  }
+  if (canceledSubsResult.error) {
+    console.error("getAdminMetrics canceled subs error:", canceledSubsResult.error);
+  }
+  if (weekAttemptsResult.error) {
+    console.error("getAdminMetrics attempts error:", weekAttemptsResult.error);
+  }
+  if (bootcampStudentsResult.error) {
+    console.error("getAdminMetrics students error:", bootcampStudentsResult.error);
+  }
+
+  const activeRows = activeSubsResult.data ?? [];
+
+  const studentIdsForProfiles = [
+    ...new Set(
+      activeRows
+        .map((r) => r.student_id as string | null)
+        .filter((id): id is string => Boolean(id))
+    ),
+  ];
+  const profileByStudent = new Map<
+    string,
+    { full_name: string | null; email: string | null }
+  >();
+  if (studentIdsForProfiles.length) {
+    const { data: profileRows, error: profileError } = await admin
+      .from("profiles")
+      .select("id, full_name, email")
+      .in("id", studentIdsForProfiles);
+    if (profileError) {
+      console.error("getAdminMetrics profiles error:", profileError);
+    } else {
+      for (const p of profileRows ?? []) {
+        profileByStudent.set(p.id as string, {
+          full_name: (p.full_name as string | null) ?? null,
+          email: (p.email as string | null) ?? null,
+        });
+      }
+    }
+  }
+
+  let mrr = 0;
+  const activeSubscriptions: AdminActiveSubscription[] = activeRows.map((row) => {
+    const price = Number(row.monthly_price ?? 0);
+    if (Number.isFinite(price)) mrr += price;
+    const profile = profileByStudent.get(row.student_id as string);
+    return {
+      id: String(row.id),
+      student_name: profile?.full_name ?? null,
+      student_email: profile?.email ?? null,
+      plan: String(row.plan ?? "bootcamp"),
+      monthly_price: Number.isFinite(price) ? price : 0,
+      started_at: (row.started_at as string | null) ?? null,
+    };
+  });
+
+  const weekAttempts = weekAttemptsResult.data ?? [];
+  const questionsAnsweredThisWeek = weekAttempts.length;
+  let correctCount = 0;
+  const activeUserIds = new Set<string>();
+  for (const a of weekAttempts) {
+    if (a.is_correct) correctCount += 1;
+    if (a.user_id) activeUserIds.add(a.user_id as string);
+  }
+
+  // Assignment completion for this calendar week's bootcamp assignments.
+  const bootcampStudents = bootcampStudentsResult.data ?? [];
+  const bootcampIds = [
+    ...new Set(
+      bootcampStudents
+        .map((s) => s.bootcamp_id as number | null)
+        .filter((id): id is number => id != null)
+    ),
+  ];
+  let assignmentCompletionRatePercent: number | null = null;
+
+  if (bootcampIds.length && bootcampStudents.length) {
+    const { data: weekAssignments, error: weekAssignError } = await admin
+      .from("assignments")
+      .select("id, bootcamp_id, due_date, created_at")
+      .in("bootcamp_id", bootcampIds);
+
+    if (weekAssignError) {
+      console.error("getAdminMetrics week assignments error:", weekAssignError);
+    } else {
+      const inWeek = (iso: string | null) => {
+        if (!iso) return false;
+        return iso >= weekStart && iso < weekEnd;
+      };
+      const thisWeekAssignments = (weekAssignments ?? []).filter(
+        (a) =>
+          inWeek((a.due_date as string | null) ?? null) ||
+          inWeek((a.created_at as string | null) ?? null)
+      );
+      const weekAssignmentIds = thisWeekAssignments.map((a) => String(a.id));
+      const assignmentsByBootcamp = new Map<number, string[]>();
+      for (const a of thisWeekAssignments) {
+        const bid = Number(a.bootcamp_id);
+        const aid = String(a.id);
+        if (!assignmentsByBootcamp.has(bid)) assignmentsByBootcamp.set(bid, []);
+        assignmentsByBootcamp.get(bid)!.push(aid);
+      }
+
+      if (weekAssignmentIds.length) {
+        const { data: aq } = await admin
+          .from("assignment_questions")
+          .select("assignment_id, question_id")
+          .in("assignment_id", weekAssignmentIds);
+
+        const questionsByAssignment = new Map<string, Set<string>>();
+        for (const row of aq ?? []) {
+          const aid = String(row.assignment_id);
+          if (!questionsByAssignment.has(aid)) {
+            questionsByAssignment.set(aid, new Set());
+          }
+          questionsByAssignment.get(aid)!.add(row.question_id as string);
+        }
+
+        const studentIds = bootcampStudents.map((s) => s.id as string);
+        const { data: progress } = await admin
+          .from("attempts")
+          .select("assignment_id, user_id, question_id")
+          .in("assignment_id", weekAssignmentIds)
+          .in("user_id", studentIds);
+
+        const answered = new Map<string, Set<string>>();
+        for (const row of progress ?? []) {
+          const key = `${row.user_id}:${row.assignment_id}`;
+          if (!answered.has(key)) answered.set(key, new Set());
+          answered.get(key)!.add(row.question_id as string);
+        }
+
+        const rates: number[] = [];
+        for (const student of bootcampStudents) {
+          const sid = student.id as string;
+          const bid = Number(student.bootcamp_id);
+          const aids = assignmentsByBootcamp.get(bid) ?? [];
+          let assigned = 0;
+          let done = 0;
+          for (const aid of aids) {
+            const qids = questionsByAssignment.get(aid) ?? new Set();
+            assigned += qids.size;
+            const doneSet = answered.get(`${sid}:${aid}`) ?? new Set();
+            for (const qid of doneSet) {
+              if (qids.has(qid)) done += 1;
+            }
+          }
+          if (assigned > 0) rates.push(done / assigned);
+        }
+
+        if (rates.length) {
+          const avg = rates.reduce((sum, r) => sum + r, 0) / rates.length;
+          assignmentCompletionRatePercent = Math.round(avg * 100);
+        }
+      }
+    }
+  }
+
+  return {
+    business: {
+      activeSubscribers: activeSubscriptions.length,
+      mrr,
+      newThisMonth: newSubsResult.count ?? 0,
+      canceledThisMonth: canceledSubsResult.count ?? 0,
+      activeSubscriptions,
+    },
+    engagement: {
+      questionsAnsweredThisWeek,
+      accuracyThisWeekPercent:
+        questionsAnsweredThisWeek === 0
+          ? null
+          : Math.round((correctCount / questionsAnsweredThisWeek) * 100),
+      activeStudentsThisWeek: activeUserIds.size,
+      assignmentCompletionRatePercent,
+    },
+  };
+}
+

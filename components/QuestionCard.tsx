@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import MathText from "./MathText";
 import GraphRenderer, { type GraphSpec } from "./graphs/GraphRenderer";
 import { getRandomQuestion, submitAttempt, type Question } from "@/app/actions";
-import { submitAssignmentProgress } from "@/app/bootcamp-actions";
 import type { SubjectFilter, TierFilter } from "@/lib/subjects";
 import { MATH_DOMAINS } from "@/lib/subjects";
 import { splitLeadingEquations } from "@/lib/mathText";
@@ -199,7 +198,7 @@ export default function QuestionCard({
   sessionExitHref?: string;
   sessionExitLabel?: string;
   hideFilters?: boolean;
-  /** Pre-hydrate session answers (e.g. assignment_progress on re-entry). */
+  /** Pre-hydrate session answers (e.g. prior assignment attempts on re-entry). */
   initialSessionResults?: Record<string, { correct: boolean; selectedAnswer: string }>;
   /** Start index into questionQueue / history (e.g. first unanswered). */
   initialHistoryIndex?: number;
@@ -558,15 +557,8 @@ export default function QuestionCard({
         selectedAnswer: selected,
         isCorrect: correct,
         timeSpentSec: elapsed,
+        assignmentId: isAssignmentMode ? assignmentId : undefined,
       });
-      if (isAssignmentMode && assignmentId != null) {
-        await submitAssignmentProgress({
-          assignmentId,
-          questionId: question.question_id,
-          isCorrect: correct,
-          selectedAnswer: selected,
-        });
-      }
       router.refresh();
     } catch (err) {
       console.error(err);

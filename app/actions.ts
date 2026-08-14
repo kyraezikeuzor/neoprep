@@ -772,6 +772,8 @@ export async function submitAttempt(params: {
   selectedAnswer: string;
   isCorrect: boolean;
   timeSpentSec: number;
+  /** When set, marks this attempt as belonging to a bootcamp assignment. */
+  assignmentId?: string;
 }) {
   const supabase = await createClient();
   const {
@@ -782,13 +784,21 @@ export async function submitAttempt(params: {
     throw new Error("Not signed in");
   }
 
-  const { error } = await supabase.from("attempts").insert({
+  const payload: Record<string, unknown> = {
     user_id: user.id,
     question_id: params.questionId,
     selected_answer: params.selectedAnswer,
     is_correct: params.isCorrect,
     time_spent_sec: params.timeSpentSec,
-  });
+  };
+  if (params.assignmentId) {
+    payload.assignment_id = params.assignmentId;
+  }
+
+  // Assignment-linked rows use the service role so RLS on assignment_id
+  // cannot block progress saves for bootcamp students.
+  const writer = params.assignmentId ? createAdminClient() : supabase;
+  const { error } = await writer.from("attempts").insert(payload);
 
   if (error) {
     console.error("submitAttempt error:", error);
@@ -799,6 +809,10 @@ export async function submitAttempt(params: {
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/recent-errors");
   revalidatePath("/", "layout");
+  if (params.assignmentId) {
+    revalidatePath("/assignments");
+    revalidatePath(`/assignments/${params.assignmentId}`);
+  }
 }
 
 export type QuestionReportIssueType =
@@ -824,7 +838,7 @@ export async function submitQuestionReport(params: {
 
   const notes = params.notes?.trim() ? params.notes.trim() : null;
 
-  const { error } = await supabase.from("question_reports").insert({
+  const { error } = await supabase.from("feedback").insert({
     question_id: params.questionId,
     user_id: user.id,
     issue_type: params.issueType,
