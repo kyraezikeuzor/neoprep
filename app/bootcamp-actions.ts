@@ -349,7 +349,7 @@ export async function listStudentAssignments(): Promise<AssignmentListItem[]> {
   const ids = rows.map((a) => String(a.id));
 
   const { data: aq, error: aqError } = await admin
-    .from("assignment_questions")
+    .from("problems")
     .select("assignment_id, question_id")
     .in("assignment_id", ids);
 
@@ -424,7 +424,7 @@ export async function getAssignmentForPractice(
   }
 
   const { data: links, error: linkError } = await admin
-    .from("assignment_questions")
+    .from("problems")
     .select("question_id")
     .eq("assignment_id", assignmentId);
 
@@ -685,7 +685,7 @@ export async function listAdminAssignments(
   const ids = rows.map((a) => String(a.id));
 
   const { data: aq } = await admin
-    .from("assignment_questions")
+    .from("problems")
     .select("assignment_id, question_id")
     .in("assignment_id", ids);
 
@@ -750,7 +750,7 @@ export async function createAssignment(params: {
 
     const assignmentId = String(assignment.id);
     const uniqueIds = [...new Set(params.questionIds.map((id) => id.trim()).filter(Boolean))];
-    const { error: linkError } = await admin.from("assignment_questions").insert(
+    const { error: linkError } = await admin.from("problems").insert(
       uniqueIds.map((question_id) => ({
         assignment_id: assignmentId,
         question_id,
@@ -843,7 +843,7 @@ export async function getBootcampRoster(
 
   const { data: aq } = assignmentIds.length
     ? await admin
-        .from("assignment_questions")
+        .from("problems")
         .select("assignment_id, question_id")
         .in("assignment_id", assignmentIds)
     : { data: [] as { assignment_id: string; question_id: string }[] };
@@ -950,7 +950,7 @@ export async function getAdminStudentBootcampDetail(
 
   const { data: aq } = assignmentIds.length
     ? await admin
-        .from("assignment_questions")
+        .from("problems")
         .select("assignment_id, question_id")
         .in("assignment_id", assignmentIds)
     : { data: [] as { assignment_id: string; question_id: string }[] };
@@ -1332,7 +1332,7 @@ export async function getAdminMetrics(): Promise<AdminMetrics> {
 
       if (weekAssignmentIds.length) {
         const { data: aq } = await admin
-          .from("assignment_questions")
+          .from("problems")
           .select("assignment_id, question_id")
           .in("assignment_id", weekAssignmentIds);
 
