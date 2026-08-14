@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 async function ensureProfile(user: {
@@ -44,26 +44,70 @@ async function ensureProfile(user: {
   }
 }
 
-export async function GET(request: Request) {
+function safeNextPath(raw: string | null): string {
+  if (!raw) return "/dashboard";
+  let value = raw;
+  try {
+    value = decodeURIComponent(raw);
+  } catch {
+    // keep raw
+  }
+  if (value.startsWith("/") && !value.startsWith("//")) return value;
+  return "/dashboard";
+}
+
+export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/dashboard";
+  const nextFromQuery = searchParams.get("next");
+  const nextFromCookie = request.cookies.get("auth_next")?.value ?? null;
+  const next = safeNextPath(nextFromQuery ?? nextFromCookie);
 
-  if (code) {
-    const supabase = await createClient();
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (!error) {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (user) {
-        await ensureProfile(user);
-      }
-
-      return NextResponse.redirect(`${origin}${next}`);
-    }
+  if (!code) {
+    return NextResponse.redirect(`${origin}/login?error=auth`);
   }
 
-  return NextResponse.redirect(`${origin}/login?error=auth`);
+  // Build the redirect response first so cookie writes from exchangeCodeForSession
+  // attach to the response the browser actually receives.
+  const redirectResponse = NextResponse.redirect(`${origin}${next}`);
+  redirectResponse.cookies.set("auth_next", "", { path: "/", maxAge: 0 });
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            redirectResponse.cookies.set(name, value, options);
+          });
+        },
+      },
+    }
+  );
+
+  // Session exchange must succeed before any profile work.
+  const { error } = await supabase.auth.exchangeCodeForSession(code);
+
+  if (error) {
+    console.error("exchangeCodeForSession error:", error);
+    return NextResponse.redirect(`${origin}/login?error=auth`);
+  }
+
+  // Profile creation is best-effort and must never break auth.
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (user) {
+      await ensureProfile(user);
+    }
+  } catch (profileError) {
+    console.error("ensureProfile failed after auth (non-fatal):", profileError);
+  }
+
+  return redirectResponse;
 }
