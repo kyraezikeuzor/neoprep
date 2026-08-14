@@ -1,5 +1,6 @@
 import DashboardShell from "@/components/DashboardShell";
 import { getAttemptCount } from "@/app/actions";
+import { getProfileRole, getStudentBootcamp } from "@/app/bootcamp-actions";
 import { createClient } from "@/lib/supabase/server";
 
 function getInitials(user: {
@@ -30,12 +31,18 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const attemptCount = await getAttemptCount();
+  const [attemptCount, role, bootcamp] = await Promise.all([
+    getAttemptCount(),
+    getProfileRole(),
+    getStudentBootcamp(),
+  ]);
 
   return (
     <DashboardShell
       attemptCount={attemptCount}
       userInitials={user ? getInitials(user) : "U"}
+      bootcampName={bootcamp?.name ?? null}
+      isAdmin={role === "admin"}
     >
       {children}
     </DashboardShell>

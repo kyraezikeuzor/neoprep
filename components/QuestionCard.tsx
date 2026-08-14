@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import MathText from "./MathText";
 import GraphRenderer, { type GraphSpec } from "./graphs/GraphRenderer";
 import { getRandomQuestion, submitAttempt, type Question } from "@/app/actions";
+import { submitAssignmentProgress } from "@/app/bootcamp-actions";
 import type { SubjectFilter, TierFilter } from "@/lib/subjects";
 import { MATH_DOMAINS } from "@/lib/subjects";
 import { splitLeadingEquations } from "@/lib/mathText";
@@ -13,6 +14,8 @@ import HighlightsNotesPanel, {
   type Highlight,
 } from "./HighlightsNotes";
 import ReportIssueModal from "./ReportIssueModal";
+import { usePracticeSession } from "@/components/PracticeSessionProvider";
+import SessionQuestionNavigator from "@/components/SessionQuestionNavigator";
 
 function normalize(s: string) {
   return s.trim().toLowerCase();
@@ -172,28 +175,76 @@ const PANEL_W = "26rem";
 export default function QuestionCard({
   initialQuestion,
   embedded = false,
+  initialSubject = "all",
+  initialTier = "all",
+  /** When set (e.g. 5 from Question Bank), practice ends after this many questions. */
+  sessionLength,
+  /** Fixed question list (assignment practice). Overrides random bank fetching. */
+  questionQueue,
+  assignmentId,
+  sessionExitHref = "/question-bank",
+  sessionExitLabel = "Back to Question Bank",
+  hideFilters = false,
+  initialSessionResults,
+  initialHistoryIndex = 0,
 }: {
   initialQuestion: Question | null;
   /** Tighter top padding when nested (e.g. Question Search card) */
   embedded?: boolean;
+  initialSubject?: SubjectFilter;
+  initialTier?: TierFilter;
+  sessionLength?: number;
+  questionQueue?: Question[];
+  assignmentId?: string;
+  sessionExitHref?: string;
+  sessionExitLabel?: string;
+  hideFilters?: boolean;
+  /** Pre-hydrate session answers (e.g. assignment_progress on re-entry). */
+  initialSessionResults?: Record<string, { correct: boolean; selectedAnswer: string }>;
+  /** Start index into questionQueue / history (e.g. first unanswered). */
+  initialHistoryIndex?: number;
 }) {
   const router = useRouter();
-  const [history, setHistory] = useState<Question[]>(() =>
-    initialQuestion ? [initialQuestion] : []
-  );
-  const [historyIndex, setHistoryIndex] = useState(0);
+  const { setPracticeActive } = usePracticeSession();
+  const isAssignmentMode = Boolean(assignmentId) && Boolean(questionQueue?.length);
+  const [history, setHistory] = useState<Question[]>(() => {
+    if (questionQueue && questionQueue.length > 0) return [...questionQueue];
+    return initialQuestion ? [initialQuestion] : [];
+  });
+  const startIndex = (() => {
+    const len = questionQueue?.length ?? (initialQuestion ? 1 : 0);
+    if (len <= 0) return 0;
+    return Math.min(Math.max(0, initialHistoryIndex), len - 1);
+  })();
+  const [historyIndex, setHistoryIndex] = useState(startIndex);
   const question = history[historyIndex] ?? null;
 
-  const [selected, setSelected] = useState<string>("");
-  const [submitted, setSubmitted] = useState(false);
-  const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
+  const [sessionResults, setSessionResults] = useState<
+    Record<string, { correct: boolean; selectedAnswer: string }>
+  >(() => initialSessionResults ?? {});
+
+  const initialRestored = (() => {
+    const q = questionQueue?.[startIndex] ?? initialQuestion ?? null;
+    if (!q || !initialSessionResults) return null;
+    return initialSessionResults[q.question_id] ?? null;
+  })();
+
+  const [selected, setSelected] = useState<string>(
+    () => initialRestored?.selectedAnswer ?? ""
+  );
+  const [submitted, setSubmitted] = useState(() => Boolean(initialRestored));
+  const [isCorrect, setIsCorrect] = useState<boolean | null>(
+    () => (initialRestored ? initialRestored.correct : null)
+  );
   const [showExplanation, setShowExplanation] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [loadingNext, setLoadingNext] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [timeHidden, setTimeHidden] = useState(false);
-  const [selectedTier, setSelectedTier] = useState<TierFilter>("all");
-  const [selectedSubject, setSelectedSubject] = useState<SubjectFilter>("all");
+  const [selectedTier, setSelectedTier] = useState<TierFilter>(initialTier);
+  const [selectedSubject, setSelectedSubject] = useState<SubjectFilter>(initialSubject);
+  const [sessionComplete, setSessionComplete] = useState(false);
+  const [reviewingFromResults, setReviewingFromResults] = useState(false);
   const [calculatorOpen, setCalculatorOpen] = useState(false);
   const [highlightsOpen, setHighlightsOpen] = useState(false);
   const [highlights, setHighlights] = useState<Highlight[]>([]);
@@ -203,13 +254,28 @@ export default function QuestionCard({
   const [topicOpen, setTopicOpen] = useState(false);
   const [difficultyOpen, setDifficultyOpen] = useState(false);
   const [selectPulse, setSelectPulse] = useState<{ letter: string; n: number } | null>(null);
+  const [navigatorOpen, setNavigatorOpen] = useState(false);
   const topicRef = useRef<HTMLDivElement>(null);
   const difficultyRef = useRef<HTMLDivElement>(null);
   const passageRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const qbPrefetchDone = useRef(false);
 
   /** Local browsing-session position (1-based). Not a DB set/session id. */
   const sessionQuestionNumber = historyIndex + 1;
+  const effectiveSessionLength =
+    isAssignmentMode && questionQueue
+      ? questionQueue.length
+      : typeof sessionLength === "number" && sessionLength > 0
+        ? sessionLength
+        : 0;
+  const isFixedSession = effectiveSessionLength > 0;
+  const isLastSessionQuestion =
+    isFixedSession && sessionQuestionNumber >= effectiveSessionLength;
+  const sessionCorrectCount = Object.values(sessionResults).filter((r) => r.correct).length;
+  const missedSessionQuestions = history.filter(
+    (q) => sessionResults[q.question_id]?.correct === false
+  );
   const isMarkedForReview = question
     ? markedForReview.has(question.question_id)
     : false;
@@ -218,6 +284,55 @@ export default function QuestionCard({
   const isMathQuestion =
     !!question?.domain &&
     (MATH_DOMAINS as readonly string[]).includes(question.domain);
+
+  useEffect(() => {
+    setPracticeActive(true);
+    return () => setPracticeActive(false);
+  }, [setPracticeActive]);
+
+  // Prefetch remaining Question Bank session questions so the navigator can jump freely.
+  useEffect(() => {
+    if (isAssignmentMode || !isFixedSession || qbPrefetchDone.current) return;
+    qbPrefetchDone.current = true;
+    let cancelled = false;
+
+    (async () => {
+      const collected: Question[] = [];
+      const seen = new Set<string>();
+      if (initialQuestion) {
+        collected.push(initialQuestion);
+        seen.add(initialQuestion.question_id);
+      }
+      while (collected.length < effectiveSessionLength && !cancelled) {
+        const next = await getRandomQuestion({
+          excludeId: collected[collected.length - 1]?.question_id,
+          tier: selectedTier,
+          subject: selectedSubject,
+        });
+        if (!next || seen.has(next.question_id)) break;
+        seen.add(next.question_id);
+        collected.push(next);
+      }
+      if (!cancelled && collected.length > 0) {
+        setHistory((prev) => {
+          if (prev.length >= effectiveSessionLength) return prev;
+          const merged = [...prev];
+          for (const q of collected) {
+            if (!merged.some((p) => p.question_id === q.question_id)) {
+              merged.push(q);
+            }
+            if (merged.length >= effectiveSessionLength) break;
+          }
+          return merged;
+        });
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function handlePassageMouseUp() {
     if (!highlightsOpen) return;
@@ -294,6 +409,32 @@ export default function QuestionCard({
     setIsCorrect(null);
     setShowExplanation(false);
     setSelectPulse(null);
+  }
+
+  function restoreOrResetForQuestion(q: Question) {
+    const result = sessionResults[q.question_id];
+    if (result) {
+      setSelected(result.selectedAnswer);
+      setIsCorrect(result.correct);
+      setSubmitted(true);
+      setShowExplanation(false);
+      setSelectPulse(null);
+    } else {
+      resetAttemptState();
+    }
+  }
+
+  function jumpToSessionQuestion(index: number) {
+    if (index < 0 || index >= history.length) return;
+    const q = history[index];
+    if (!q) return;
+    setHistoryIndex(index);
+    setReviewingFromResults(false);
+    setSessionComplete(false);
+    restoreOrResetForQuestion(q);
+    setNavigatorOpen(false);
+    setCalculatorOpen(false);
+    setHighlightsOpen(false);
   }
 
   function applyQuestion(next: Question | null, mode: "replace" | "append") {
@@ -377,6 +518,13 @@ export default function QuestionCard({
 
   async function loadFilteredQuestion(excludeId?: string) {
     setLoadingNext(true);
+    if (isAssignmentMode && questionQueue) {
+      const nextIndex = history.length;
+      const next = questionQueue[nextIndex] ?? null;
+      applyQuestion(next, "append");
+      setLoadingNext(false);
+      return;
+    }
     const next = await getRandomQuestion({
       excludeId,
       tier: selectedTier,
@@ -397,6 +545,12 @@ export default function QuestionCard({
     const correct = isCorrectAnswer(selected, question.correct_answer);
     setIsCorrect(correct);
     setSubmitted(true);
+    if (isFixedSession) {
+      setSessionResults((prev) => ({
+        ...prev,
+        [question.question_id]: { correct, selectedAnswer: selected },
+      }));
+    }
 
     try {
       await submitAttempt({
@@ -405,6 +559,14 @@ export default function QuestionCard({
         isCorrect: correct,
         timeSpentSec: elapsed,
       });
+      if (isAssignmentMode && assignmentId != null) {
+        await submitAssignmentProgress({
+          assignmentId,
+          questionId: question.question_id,
+          isCorrect: correct,
+          selectedAnswer: selected,
+        });
+      }
       router.refresh();
     } catch (err) {
       console.error(err);
@@ -413,18 +575,107 @@ export default function QuestionCard({
 
   function handlePrevious() {
     if (!canGoPrevious) return;
-    setHistoryIndex((i) => i - 1);
-    resetAttemptState();
+    const nextIndex = historyIndex - 1;
+    const q = history[nextIndex];
+    setHistoryIndex(nextIndex);
+    if (q) restoreOrResetForQuestion(q);
+    else resetAttemptState();
   }
 
   async function handleNext() {
     // Re-walk forward through history if we previously went back
     if (historyIndex < history.length - 1) {
-      setHistoryIndex((i) => i + 1);
-      resetAttemptState();
+      const nextIndex = historyIndex + 1;
+      const q = history[nextIndex];
+      setHistoryIndex(nextIndex);
+      if (q) restoreOrResetForQuestion(q);
+      else resetAttemptState();
       return;
     }
+
+    if (isFixedSession && history.length >= effectiveSessionLength) {
+      if (!submitted) return;
+      setSessionComplete(true);
+      return;
+    }
+
     await loadFilteredQuestion(question?.question_id);
+  }
+
+  async function startAnotherSession() {
+    if (isAssignmentMode) {
+      router.push(sessionExitHref);
+      router.refresh();
+      return;
+    }
+    setLoadingNext(true);
+    setSessionComplete(false);
+    setReviewingFromResults(false);
+    setSessionResults({});
+    setMarkedForReview(new Set());
+    setHighlights([]);
+    setCalculatorOpen(false);
+    setHighlightsOpen(false);
+    qbPrefetchDone.current = false;
+    const first = await getRandomQuestion({
+      tier: selectedTier,
+      subject: selectedSubject,
+    });
+    const collected: Question[] = [];
+    const seen = new Set<string>();
+    if (first) {
+      collected.push(first);
+      seen.add(first.question_id);
+    }
+    while (collected.length < effectiveSessionLength) {
+      const next = await getRandomQuestion({
+        excludeId: collected[collected.length - 1]?.question_id,
+        tier: selectedTier,
+        subject: selectedSubject,
+      });
+      if (!next || seen.has(next.question_id)) break;
+      seen.add(next.question_id);
+      collected.push(next);
+    }
+    qbPrefetchDone.current = true;
+    if (collected.length) {
+      setHistory(collected);
+      setHistoryIndex(0);
+    } else {
+      setHistory([]);
+      setHistoryIndex(0);
+    }
+    resetAttemptState();
+    setLoadingNext(false);
+  }
+
+  function returnToBankLanding() {
+    router.push(sessionExitHref);
+    router.refresh();
+  }
+
+  function reviewMissedQuestion(questionId: string) {
+    const idx = history.findIndex((q) => q.question_id === questionId);
+    if (idx < 0) return;
+    const result = sessionResults[questionId];
+    setSessionComplete(false);
+    setReviewingFromResults(true);
+    setHistoryIndex(idx);
+    setSelected(result?.selectedAnswer ?? "");
+    setIsCorrect(result ? result.correct : false);
+    setSubmitted(true);
+    setShowExplanation(true);
+    setCalculatorOpen(false);
+    setHighlightsOpen(false);
+  }
+
+  function backToSessionResults() {
+    setReviewingFromResults(false);
+    setSessionComplete(true);
+    setShowExplanation(false);
+    setCalculatorOpen(false);
+    setHighlightsOpen(false);
+    resetAttemptState();
   }
 
   async function handleTierSelect(tier: TierFilter) {
@@ -453,6 +704,82 @@ export default function QuestionCard({
     });
     applyQuestion(next, "replace");
     setLoadingNext(false);
+  }
+
+  if (!question && !sessionComplete) {
+    return (
+      <div className="mx-auto max-w-2xl px-8 py-16 text-center">
+        <p className="text-sm text-arc-muted">No questions available right now.</p>
+      </div>
+    );
+  }
+
+  if (sessionComplete && isFixedSession) {
+    const total = effectiveSessionLength;
+    const correct = sessionCorrectCount;
+    return (
+      <div className="flex h-full min-h-0 items-center justify-center overflow-y-auto px-10 py-12 sm:px-14 lg:px-16">
+        <div className="w-full max-w-md">
+          <div className="text-center">
+            <p className="font-sans text-xs font-medium uppercase tracking-wide text-arc-muted">
+              Session complete
+            </p>
+            <h2 className="mt-2 font-sans text-3xl font-semibold tracking-tight text-[#3F3F46]">
+              {correct} of {total} correct
+            </h2>
+          </div>
+
+          {missedSessionQuestions.length > 0 && (
+            <div className="mt-6">
+              <p className="font-sans text-xs font-medium uppercase tracking-wide text-arc-muted">
+                Missed
+              </p>
+              <ul className="mt-2 divide-y divide-[#E5E7EB] rounded-2xl border-2 border-[#E5E7EB] bg-white">
+                {missedSessionQuestions.map((q) => {
+                  const tag = [q.domain, q.skill].filter(Boolean).join(" · ") || "Question";
+                  return (
+                    <li key={q.question_id}>
+                      <button
+                        type="button"
+                        onClick={() => reviewMissedQuestion(q.question_id)}
+                        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition hover:bg-[#FAFAFA]"
+                      >
+                        <span className="min-w-0 truncate font-sans text-sm font-medium text-arc-ink">
+                          {tag}
+                        </span>
+                        <span className="shrink-0 font-sans text-xs font-medium text-[#007AFF]">
+                          Review
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
+
+          <div className="mt-8 flex flex-col items-stretch gap-3 sm:flex-row sm:justify-center">
+            {!isAssignmentMode && (
+              <button
+                type="button"
+                onClick={startAnotherSession}
+                disabled={loadingNext}
+                className="rounded-full bg-[#007AFF] px-6 py-3 font-sans text-base font-semibold text-white transition hover:bg-[#0066DD] disabled:opacity-60"
+              >
+                {loadingNext ? "Loading..." : "Practice 5 More"}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={returnToBankLanding}
+              className="rounded-full border-2 border-[#E5E7EB] bg-white px-6 py-3 font-sans text-base font-semibold text-arc-ink transition hover:bg-[#F7F7F7]"
+            >
+              {sessionExitLabel}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (!question) {
@@ -516,6 +843,15 @@ export default function QuestionCard({
           <div className="w-full border-b border-arc-line pb-1.5">
             <div className="grid w-full grid-cols-[1fr_auto_1fr] items-center gap-3">
               <div className="flex min-w-0 flex-wrap items-center justify-start gap-2">
+                <button
+                  type="button"
+                  onClick={returnToBankLanding}
+                  className="rounded-lg bg-arc-ink px-3.5 py-1.5 font-sans text-sm font-semibold text-white transition hover:bg-[#2D2D2D]"
+                >
+                  Exit
+                </button>
+                {!hideFilters && (
+                  <>
                 <div className="relative shrink-0" ref={topicRef}>
                   <button
                     type="button"
@@ -677,6 +1013,8 @@ export default function QuestionCard({
                     </div>
                   )}
                 </div>
+                  </>
+                )}
               </div>
 
               <div className="flex shrink-0 items-center gap-2 justify-self-center">
@@ -1104,13 +1442,41 @@ export default function QuestionCard({
         <div className="z-20 shrink-0 border-t border-arc-line bg-white px-6 py-3 sm:px-8">
           <div className="grid w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
             <div className="min-w-0 justify-self-start">
-              <p className="truncate text-xs font-normal leading-snug text-arc-muted sm:text-sm">
-                {question.domain || "Domain"}
-              </p>
-              {question.skill && (
-                <p className="mt-0.5 truncate text-xs font-normal leading-snug text-arc-muted sm:text-sm">
-                  {question.skill}
-                </p>
+              {isFixedSession ? (
+                <button
+                  type="button"
+                  onClick={() => setNavigatorOpen(true)}
+                  className="inline-flex items-center gap-2 rounded-full bg-arc-ink px-4 py-2 font-sans text-sm font-semibold tabular-nums text-white transition hover:bg-[#2D2D2D]"
+                  aria-haspopup="dialog"
+                  aria-expanded={navigatorOpen}
+                >
+                  {sessionQuestionNumber} of {effectiveSessionLength}
+                  <svg
+                    viewBox="0 0 20 20"
+                    className={`h-3.5 w-3.5 transition ${navigatorOpen ? "rotate-180" : ""}`}
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    aria-hidden
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M5.5 7.5L10 12l4.5-4.5"
+                    />
+                  </svg>
+                </button>
+              ) : (
+                <>
+                  <p className="truncate text-xs font-normal leading-snug text-arc-muted sm:text-sm">
+                    {question.domain || "Domain"}
+                  </p>
+                  {question.skill && (
+                    <p className="mt-0.5 truncate text-xs font-normal leading-snug text-arc-muted sm:text-sm">
+                      {question.skill}
+                    </p>
+                  )}
+                </>
               )}
             </div>
 
@@ -1156,35 +1522,69 @@ export default function QuestionCard({
               )}
 
               <div className="flex items-center justify-center gap-3">
-                <button
-                  type="button"
-                  onClick={handlePrevious}
-                  disabled={!canGoPrevious || loadingNext}
-                  className="rounded-lg border border-arc-line bg-white px-6 py-3 text-base font-semibold text-arc-ink transition hover:bg-[#F3F4F6] disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  Back
-                </button>
+                {reviewingFromResults ? (
+                  <button
+                    type="button"
+                    onClick={backToSessionResults}
+                    className="rounded-lg bg-[#007AFF] px-8 py-3 text-base font-semibold text-white transition hover:bg-[#0066DD]"
+                  >
+                    Back to results
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={handlePrevious}
+                      disabled={!canGoPrevious || loadingNext}
+                      className="rounded-lg border border-arc-line bg-white px-6 py-3 text-base font-semibold text-arc-ink transition hover:bg-[#F3F4F6] disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      Back
+                    </button>
 
-                <button
-                  onClick={handleSubmit}
-                  disabled={submitted || !selected}
-                  className="rounded-lg bg-[#007AFF] px-10 py-3 text-base font-semibold text-white transition hover:bg-[#0066DD] disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  Answer
-                </button>
+                    <button
+                      onClick={handleSubmit}
+                      disabled={submitted || !selected}
+                      className="rounded-lg bg-[#007AFF] px-10 py-3 text-base font-semibold text-white transition hover:bg-[#0066DD] disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      Answer
+                    </button>
 
-                <button
-                  type="button"
-                  onClick={handleNext}
-                  disabled={loadingNext}
-                  className="rounded-lg border border-arc-line bg-white px-6 py-3 text-base font-semibold text-arc-ink transition hover:bg-[#F3F4F6] disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  {loadingNext ? "Loading..." : "Next"}
-                </button>
+                    <button
+                      type="button"
+                      onClick={handleNext}
+                      disabled={
+                        loadingNext ||
+                        (isLastSessionQuestion &&
+                          historyIndex >= history.length - 1 &&
+                          !submitted)
+                      }
+                      className="rounded-lg border border-arc-line bg-white px-6 py-3 text-base font-semibold text-arc-ink transition hover:bg-[#F3F4F6] disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      {loadingNext
+                        ? "Loading..."
+                        : isLastSessionQuestion && historyIndex >= history.length - 1
+                          ? "Finish"
+                          : "Next"}
+                    </button>
+                  </>
+                )}
               </div>
             </div>
 
-            <div aria-hidden className="min-w-0" />
+            <div className="min-w-0 justify-self-end text-right">
+              {isFixedSession ? (
+                <>
+                  <p className="truncate text-xs font-normal leading-snug text-arc-muted sm:text-sm">
+                    {question.domain || "Domain"}
+                  </p>
+                  {question.skill && (
+                    <p className="mt-0.5 truncate text-xs font-normal leading-snug text-arc-muted sm:text-sm">
+                      {question.skill}
+                    </p>
+                  )}
+                </>
+              ) : null}
+            </div>
           </div>
         </div>
       </div>
@@ -1276,6 +1676,22 @@ export default function QuestionCard({
         questionId={question.question_id}
         onClose={() => setReportOpen(false)}
       />
+
+      {isFixedSession ? (
+        <SessionQuestionNavigator
+          open={navigatorOpen}
+          onClose={() => setNavigatorOpen(false)}
+          onJump={jumpToSessionQuestion}
+          questions={history.map((q) => ({
+            question_id: q.question_id,
+            tier: q.tier,
+          }))}
+          total={effectiveSessionLength}
+          currentIndex={historyIndex}
+          results={sessionResults}
+          markedForReview={markedForReview}
+        />
+      ) : null}
       </div>
     </div>
   );

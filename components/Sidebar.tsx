@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
@@ -52,9 +53,25 @@ function SavedIcon() {
   );
 }
 
+function AssignmentsIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0" fill="currentColor" aria-hidden>
+      <path d="M7 3.5A1.5 1.5 0 005.5 5v14A1.5 1.5 0 007 20.5h10a1.5 1.5 0 001.5-1.5V8.2L13.8 3.5H7zm6 1.2l3.8 3.8H13V4.7zM8.5 12h7v1.5h-7V12zm0 3.5h7V17h-7v-1.5z" />
+    </svg>
+  );
+}
+
+function AdminIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0" fill="currentColor" aria-hidden>
+      <path d="M12 2.5l7.5 3.2v5.1c0 4.7-3.1 8.9-7.5 10.2-4.4-1.3-7.5-5.5-7.5-10.2V5.7L12 2.5zm0 2.3L6.5 7v3.8c0 3.6 2.3 6.8 5.5 7.9 3.2-1.1 5.5-4.3 5.5-7.9V7L12 4.8z" />
+    </svg>
+  );
+}
+
 type NavItem = { href: string; label: string; icon: ReactNode; match?: "exact" | "prefix" };
 
-const SECTIONS: { title: string; items: NavItem[] }[] = [
+const BASE_SECTIONS: { title: string; items: NavItem[] }[] = [
   {
     title: "HOME",
     items: [{ href: "/dashboard", label: "Dashboard", icon: <HomeIcon />, match: "exact" }],
@@ -91,7 +108,15 @@ function isActive(pathname: string | null, item: NavItem) {
   return pathname === item.href || pathname.startsWith(`${item.href}/`);
 }
 
-export default function Sidebar({ hideBrand = false }: { hideBrand?: boolean }) {
+export default function Sidebar({
+  hideBrand = false,
+  bootcampName = null,
+  isAdmin = false,
+}: {
+  hideBrand?: boolean;
+  bootcampName?: string | null;
+  isAdmin?: boolean;
+}) {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -104,25 +129,58 @@ export default function Sidebar({ hideBrand = false }: { hideBrand?: boolean }) 
 
   const settingsActive = pathname?.startsWith("/settings");
 
+  const sections = BASE_SECTIONS.map((section) => {
+    if (section.title !== "LEARN" || isAdmin) return section;
+    return {
+      ...section,
+      items: section.items.filter((item) => item.href !== "/question-viewer"),
+    };
+  });
+  if (bootcampName) {
+    sections.splice(1, 0, {
+      title: "BOOTCAMP",
+      items: [
+        {
+          href: "/assignments",
+          label: "Assignments",
+          icon: <AssignmentsIcon />,
+        },
+      ],
+    });
+  }
+  if (isAdmin) {
+    sections.push({
+      title: "ADMIN",
+      items: [{ href: "/admin", label: "Bootcamps", icon: <AdminIcon /> }],
+    });
+  }
+
   return (
     <aside className="flex h-full w-56 shrink-0 flex-col bg-[#007AFF]">
       {!hideBrand && (
-        <div className="flex h-14 shrink-0 items-center gap-2 px-4">
-          <span
-            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white font-sans text-sm font-bold leading-none text-[#007AFF]"
-            aria-hidden
-          >
-            M
-          </span>
-          <span className="font-sans text-xl font-bold text-white">ManyPrep</span>
+        <div className="flex h-14 shrink-0 items-center gap-2.5 px-4">
+          <Image
+            src="/tutormigo-logo.png"
+            alt="Tutormigo"
+            width={28}
+            height={28}
+            className="h-7 w-7 shrink-0 rounded-lg object-cover"
+            priority
+          />
+          <span className="font-sans text-xl font-bold text-white">Tutormigo</span>
         </div>
       )}
-      <nav className={`flex-1 space-y-5 overflow-y-auto px-3 pb-3 ${hideBrand ? "pt-5" : "mt-3"}`}>
-        {SECTIONS.map((section) => (
+      <nav className={`flex-1 space-y-5 overflow-y-auto px-3 pb-3 ${hideBrand ? "pt-3" : "mt-3"}`}>
+        {sections.map((section) => (
           <div key={section.title}>
             <p className="mb-1.5 px-3 text-[11px] font-semibold tracking-[0.08em] text-white">
               {section.title}
             </p>
+            {section.title === "BOOTCAMP" && bootcampName && (
+              <p className="mb-1.5 truncate px-3 font-sans text-xs text-white/70">
+                {bootcampName}
+              </p>
+            )}
             <div className="space-y-0.5">
               {section.items.map((item) => (
                 <Link

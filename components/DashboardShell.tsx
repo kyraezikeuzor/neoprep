@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import Sidebar from "@/components/Sidebar";
+import { PracticeSessionProvider, usePracticeSession } from "@/components/PracticeSessionProvider";
 
 function PanelIcon() {
   return (
@@ -41,34 +42,42 @@ function QuestionCountIcon() {
   );
 }
 
-export default function DashboardShell({
+function DashboardShellInner({
   children,
   attemptCount = 0,
   userInitials = "U",
+  bootcampName = null,
+  isAdmin = false,
 }: {
   children: React.ReactNode;
   attemptCount?: number;
   userInitials?: string;
+  bootcampName?: string | null;
+  isAdmin?: boolean;
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const { practiceActive } = usePracticeSession();
+
+  if (practiceActive) {
+    return (
+      <div className="flex h-[100dvh] overflow-hidden bg-white font-sans">
+        <div className="min-h-0 min-w-0 flex-1 overflow-hidden bg-white">
+          {children}
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex h-[100dvh] flex-col overflow-hidden bg-white font-sans">
-      {/* Full-width top bar: ManyPrep + toggle share one row */}
-      <header className="flex h-[3.25rem] shrink-0 items-stretch bg-white">
-        {sidebarOpen && (
-          <div className="flex w-56 shrink-0 items-center gap-2 bg-[#007AFF] px-4">
-            <span
-              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white font-sans text-sm font-bold leading-none text-[#007AFF]"
-              aria-hidden
-            >
-              M
-            </span>
-            <span className="font-sans text-xl font-bold leading-none text-white">ManyPrep</span>
-          </div>
-        )}
+    <div className="flex h-[100dvh] overflow-hidden bg-white font-sans">
+      {sidebarOpen ? (
+        <div className="h-full w-56 shrink-0 overflow-hidden">
+          <Sidebar bootcampName={bootcampName} isAdmin={isAdmin} />
+        </div>
+      ) : null}
 
-        <div className="flex min-w-0 flex-1 items-center justify-between border-b border-[#E8E8E6] px-3 sm:px-4">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        <header className="flex h-[3.25rem] shrink-0 items-center justify-between border-b border-[#E8E8E6] bg-white px-3 sm:px-4">
           <button
             type="button"
             onClick={() => setSidebarOpen((open) => !open)}
@@ -86,7 +95,9 @@ export default function DashboardShell({
               aria-label={`${attemptCount} questions attempted`}
             >
               <QuestionCountIcon />
-              <span className="font-sans text-sm font-medium tabular-nums">{attemptCount}</span>
+              <span className="font-sans text-sm font-medium tabular-nums">
+                {attemptCount}
+              </span>
             </div>
 
             <Link
@@ -97,18 +108,39 @@ export default function DashboardShell({
               {userInitials}
             </Link>
           </div>
+        </header>
+
+        <div className="min-h-0 min-w-0 flex-1 overflow-hidden bg-white">
+          {children}
         </div>
-      </header>
-
-      <div className="flex min-h-0 flex-1 overflow-hidden">
-        {sidebarOpen ? (
-          <div className="h-full w-56 shrink-0 overflow-hidden">
-            <Sidebar hideBrand />
-          </div>
-        ) : null}
-
-        <div className="min-h-0 min-w-0 flex-1 overflow-hidden bg-white">{children}</div>
       </div>
     </div>
+  );
+}
+
+export default function DashboardShell({
+  children,
+  attemptCount = 0,
+  userInitials = "U",
+  bootcampName = null,
+  isAdmin = false,
+}: {
+  children: React.ReactNode;
+  attemptCount?: number;
+  userInitials?: string;
+  bootcampName?: string | null;
+  isAdmin?: boolean;
+}) {
+  return (
+    <PracticeSessionProvider>
+      <DashboardShellInner
+        attemptCount={attemptCount}
+        userInitials={userInitials}
+        bootcampName={bootcampName}
+        isAdmin={isAdmin}
+      >
+        {children}
+      </DashboardShellInner>
+    </PracticeSessionProvider>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { getQuestionById, type Question } from "@/app/actions";
+import DashboardPageShell from "@/components/DashboardPageShell";
 import QuestionCard from "@/components/QuestionCard";
 import PageHeader from "@/components/PageHeader";
 
@@ -41,8 +42,8 @@ export default function QuestionViewer({
   }
 
   return (
-    <div className="h-full overflow-y-auto px-6 pb-10 pt-8 font-sans sm:px-10">
-      <div className="mx-auto w-full max-w-[750px]">
+    <DashboardPageShell narrow>
+      <div className="font-sans">
         <PageHeader
           title="Question Search"
           description="Look up any question by its ID (short hex or full UUID)."
@@ -92,6 +93,6 @@ export default function QuestionViewer({
           )}
         </div>
       </div>
-    </div>
+    </DashboardPageShell>
   );
 }
