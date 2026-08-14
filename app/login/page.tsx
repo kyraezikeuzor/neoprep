@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -30,6 +31,11 @@ function GoogleIcon({ className = "h-7 w-7" }: { className?: string }) {
 
 function LoginForm() {
   const searchParams = useSearchParams();
+  const nextParam = searchParams.get("next");
+  const next =
+    nextParam && nextParam.startsWith("/") && !nextParam.startsWith("//")
+      ? nextParam
+      : "/dashboard";
   const [googleLoading, setGoogleLoading] = useState(false);
   const [googleError, setGoogleError] = useState(
     searchParams.get("error") === "auth" ? "Google sign-in failed. Try again." : ""
@@ -38,6 +44,10 @@ function LoginForm() {
   async function handleGoogleSignIn() {
     setGoogleLoading(true);
     setGoogleError("");
+
+    // Keep redirectTo free of query params so it matches Supabase allow-list entries.
+    // Stash the post-login destination in a short-lived cookie for /auth/callback.
+    document.cookie = `auth_next=${encodeURIComponent(next)}; Path=/; Max-Age=600; SameSite=Lax`;
 
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithOAuth({
@@ -92,14 +102,16 @@ export default function LoginPage() {
       <div className="w-full max-w-[22rem]">
         <div className="text-center">
           <Link href="/" className="inline-flex items-center gap-2.5">
-            <span
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-[#007AFF] text-base font-bold text-white"
-              aria-hidden
-            >
-              M
-            </span>
+            <Image
+              src="/tutormigo-logo.png"
+              alt="Tutormigo"
+              width={36}
+              height={36}
+              className="h-9 w-9 rounded-lg object-cover"
+              priority
+            />
             <span className="text-2xl font-semibold tracking-tight text-[#18181B]">
-              ManyPrep
+              Tutormigo
             </span>
           </Link>
 
@@ -107,7 +119,7 @@ export default function LoginPage() {
             Create your free account
           </h1>
           <p className="mt-2 text-base text-[#71717A]">
-            Join the ManyPrep beta with Google.
+            Join Tutormigo with Google to start practicing.
           </p>
         </div>
 

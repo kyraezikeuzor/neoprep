@@ -1,6 +1,12 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { getRecentErrors } from "@/app/actions";
+import DashboardPageShell from "@/components/DashboardPageShell";
 import PageHeader from "@/components/PageHeader";
+
+export const metadata: Metadata = {
+  title: "Mistakes · Tutormigo",
+};
 
 function truncateStem(stem: string, max = 140) {
   const cleaned = stem.replace(/\s+/g, " ").trim();
@@ -23,7 +29,7 @@ export default async function MistakesPage() {
   const errors = await getRecentErrors();
 
   return (
-    <div className="h-full overflow-y-auto px-8 pb-10 pt-8 sm:px-10">
+    <DashboardPageShell>
       <PageHeader
         title="Mistakes"
         description="Missed questions from all practice · tap one to retry it"
@@ -60,6 +66,6 @@ export default async function MistakesPage() {
           ))}
         </ul>
       )}
-    </div>
+    </DashboardPageShell>
   );
 }

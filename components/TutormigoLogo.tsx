@@ -1,7 +1,6 @@
 import Image from "next/image";
 
-/** @deprecated Prefer TutormigoLogo — kept for older imports. */
-export default function ManyPrepLogo({
+export default function TutormigoLogo({
   className = "h-8 w-8",
   priority = false,
 }: {

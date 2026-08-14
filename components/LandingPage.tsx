@@ -34,32 +34,32 @@ const TESTIMONIAL_ATTRIBUTION =
 
 const FAQS: { q: string; a: string }[] = [
   {
-    q: "Is the beta really free?",
-    a: "Yes. There is no payment required to participate. At the end of the beta, you will not be automatically charged — any future paid plans will be communicated separately before payment is required.",
+    q: "Is the platform really free?",
+    a: "Yes. There is no payment required to participate. At the end of the platform period, you will not be automatically charged — any future paid plans will be communicated separately before payment is required.",
   },
   {
-    q: "What do I get as a beta participant?",
-    a: "One week of live SAT instruction (two hours of group teaching), access to 1,000 original SAT practice questions with explanations, the ManyPrep Discord community, and full platform access for the beta period.",
+    q: "What do I get as a platform participant?",
+    a: "One week of live SAT instruction (two hours of group teaching), access to 1,000 original SAT practice questions with explanations, the Tutormigo Discord community, and full platform access for the platform period.",
   },
   {
-    q: "What are beta participants expected to do?",
-    a: "Practice regularly, attend the live session when you can, report bugs or confusing questions, share honest feedback, and complete occasional short surveys. Your input helps us improve ManyPrep before public launch.",
+    q: "What are platform participants expected to do?",
+    a: "Practice regularly, attend the live session when you can, report bugs or confusing questions, share honest feedback, and complete occasional short surveys. Your input helps us improve Tutormigo before public launch.",
   },
   {
     q: "Are these official College Board questions?",
-    a: "No. ManyPrep’s bank is 1,000 original questions designed to reflect the format, skills, and difficulty of the SAT — not official College Board material.",
+    a: "No. Tutormigo’s bank is 1,000 original questions designed to reflect the format, skills, and difficulty of the SAT — not official College Board material.",
   },
   {
-    q: "What happens when the beta ends?",
-    a: "ManyPrep may transition to a paid program later. Participation in the beta does not obligate you to purchase anything. We’ll share future pricing and terms before anyone is asked to pay.",
+    q: "What happens when the platform period ends?",
+    a: "Tutormigo may transition to a paid program later. Participation does not obligate you to purchase anything. We’ll share future pricing and terms before anyone is asked to pay.",
   },
 ];
 
 const STEPS = [
   {
     n: "01",
-    title: "Join the free beta",
-    desc: "Sign up and get platform access for the beta — no payment required.",
+    title: "Join the free platform",
+    desc: "Sign up and get platform access — no payment required.",
   },
   {
     n: "02",
@@ -114,13 +114,15 @@ export default function LandingPage() {
       <header className={`sticky top-0 z-40 border-b-2 border-[#E5E5E5] bg-white`}>
         <div className="mx-auto flex h-14 max-w-[70rem] items-center justify-between px-6 sm:px-10 lg:px-14">
           <Link href="/" className="flex items-center gap-2">
-            <span
-              className="flex h-7 w-7 items-center justify-center rounded-full bg-[#111111] text-sm font-bold text-white"
-              aria-hidden
-            >
-              M
-            </span>
-            <span className={`text-lg font-medium ${headingTrack} ${ink}`}>ManyPrep</span>
+            <Image
+              src="/tutormigo-logo.png"
+              alt="Tutormigo"
+              width={28}
+              height={28}
+              className="h-7 w-7 rounded-lg object-cover"
+              priority
+            />
+            <span className={`text-lg font-medium ${headingTrack} ${ink}`}>Tutormigo</span>
           </Link>
           <nav className={`hidden items-center gap-6 text-base font-medium ${muted} md:flex`}>
             <a href="#platform" className="transition hover:text-[#111111]">
@@ -147,7 +149,7 @@ export default function LandingPage() {
               href="/login"
               className="rounded-full border-2 border-[#18181B] bg-[#18181B] px-5 py-2.5 text-base font-medium text-white transition hover:bg-[#3F3F46]"
             >
-              Join free beta
+              Join free platform
             </Link>
           </div>
         </div>
@@ -158,13 +160,13 @@ export default function LandingPage() {
         <div className="mx-auto grid max-w-[70rem] items-center gap-10 px-6 py-12 sm:px-10 sm:py-16 lg:grid-cols-2 lg:gap-14 lg:px-14 lg:py-20">
           <div className="max-w-xl">
             <p className="mb-3 inline-flex rounded-full border-2 border-[#E4E4E7] bg-white px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[#71717A]">
-              Free beta
+              Free platform
             </p>
             <h1 className={`text-4xl font-semibold leading-[1.1] tracking-wide text-[#3F3F46] sm:text-5xl lg:text-[3.25rem]`}>
               Get better at the SAT, one question at a time.
             </h1>
             <p className="landing-body mt-5 text-base font-normal leading-relaxed text-[#71717A] sm:text-lg">
-              Join the ManyPrep beta for free. Get 1,000 original SAT questions, clear
+              Join the Tutormigo platform for free. Get 1,000 original SAT questions, clear
               explanations, live group instruction, and a community to keep you on track.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
@@ -172,7 +174,7 @@ export default function LandingPage() {
                 href="/login"
                 className="inline-flex rounded-full border-2 border-[#27272A] bg-[#27272A] px-6 py-3 text-base font-semibold text-white transition hover:bg-[#3F3F46]"
               >
-                Join free beta
+                Join free platform
               </Link>
               <a
                 href="https://discord.gg/bCcrzEPQuc"
@@ -193,7 +195,7 @@ export default function LandingPage() {
                   <div className="relative h-full w-full overflow-hidden rounded-full">
                     <Image
                       src="/landing/kyra-hero.jpg"
-                      alt="Kyra, ManyPrep tutor"
+                      alt="Kyra, Tutormigo tutor"
                       fill
                       priority
                       sizes="(max-width: 640px) 70vw, 360px"
@@ -214,7 +216,7 @@ export default function LandingPage() {
                   Learn from a 1560 scorer.
                 </h2>
                 <p className="landing-body mt-1.5 text-sm leading-relaxed text-[#71717A]">
-                  I&apos;m Kyra. I built ManyPrep to help students practice with clear
+                  I&apos;m Kyra. I built Tutormigo to help students practice with clear
                   explanations and real SAT structure.
                 </p>
               </div>
@@ -237,7 +239,7 @@ export default function LandingPage() {
             <div className={`mt-8 overflow-hidden rounded-3xl ${border} bg-white`}>
               <Image
                 src="/landing/dashboard.jpg"
-                alt="ManyPrep question bank dashboard"
+                alt="Tutormigo question bank dashboard"
                 width={1024}
                 height={499}
                 className="h-auto w-full"
@@ -257,7 +259,7 @@ export default function LandingPage() {
             <div className={`mt-8 overflow-hidden rounded-3xl ${border} bg-white`}>
               <Image
                 src="/landing/question-explanation.jpg"
-                alt="ManyPrep practice question with explanation panel"
+                alt="Tutormigo practice question with explanation panel"
                 width={1024}
                 height={497}
                 className="h-auto w-full"
@@ -365,7 +367,7 @@ export default function LandingPage() {
               Pricing
             </h2>
             <p className={`landing-body mt-3 text-center text-base ${muted}`}>
-              Coming after the beta. Beta participants are never auto-charged.
+              Coming after the free platform period. Platform participants are never auto-charged.
             </p>
           </div>
         </section>
@@ -385,22 +387,22 @@ export default function LandingPage() {
         </section>
       )}
 
-      {/* Beta program policy */}
+      {/* Platform program policy */}
       <section className="border-t-2 border-[#E5E5E5] bg-white py-12 sm:py-16">
         <div className="mx-auto max-w-3xl px-6 sm:px-10 lg:px-14">
           <div className={`rounded-3xl ${border} bg-white p-6 sm:p-8`}>
-            <h2 className={`text-xl font-medium ${headingTrack} ${ink}`}>Beta program policy</h2>
+            <h2 className={`text-xl font-medium ${headingTrack} ${ink}`}>Platform program policy</h2>
             <p className={`landing-body mt-2 text-sm leading-relaxed ${muted}`}>
-              The ManyPrep Beta Program is free. You get live instruction, the question bank,
-              Discord, and platform access for the beta period. In return, we ask you to
+              The Tutormigo Platform Program is free. You get live instruction, the question bank,
+              Discord, and platform access. In return, we ask you to
               practice, share feedback, and report issues. You will not be automatically
-              charged when the beta ends.
+              charged when the free platform period ends.
             </p>
             <ul className={`landing-body mt-4 list-disc space-y-2 pl-5 text-sm leading-relaxed ${muted}`}>
               <li>No payment required to participate</li>
-              <li>Beta access lasts for the beta testing period and may change as we ship updates</li>
+              <li>Platform access lasts for the testing period and may change as we ship updates</li>
               <li>Future pricing will be communicated separately before any purchase</li>
-              <li>Joining the beta does not obligate you to buy a future plan</li>
+              <li>Joining the platform does not obligate you to buy a future plan</li>
             </ul>
           </div>
         </div>
@@ -442,10 +444,10 @@ export default function LandingPage() {
         <div
           className={`landing-body mx-auto flex max-w-[70rem] flex-col items-center justify-between gap-3 px-6 text-sm ${muted} sm:flex-row sm:px-10 lg:px-14`}
         >
-          <p>© {new Date().getFullYear()} ManyPrep</p>
+          <p>© {new Date().getFullYear()} Tutormigo</p>
           <div className="flex gap-4">
             <Link href="/login" className="transition hover:text-[#111111]">
-              Join free beta
+              Join free platform
             </Link>
             <a href="#faqs" className="transition hover:text-[#111111]">
               FAQs

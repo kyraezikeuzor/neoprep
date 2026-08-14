@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import Script from "next/script";
-import "@/app/globals.css";
+import NextTopLoader from "nextjs-toploader";
+import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "ManyPrep",
-  description: "SAT question bank",
+  title: "Tutormigo",
+  description: "Get better at the SAT, one question at a time.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -43,6 +44,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body className="h-full font-sans">
+        <NextTopLoader
+          color="#5AC8FA"
+          height={4}
+          showSpinner={false}
+          shadow={false}
+          crawl
+          speed={200}
+          zIndex={9999}
+        />
         {children}
         <Script
           id="mathjax-script"
