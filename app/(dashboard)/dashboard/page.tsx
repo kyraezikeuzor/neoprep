@@ -1,7 +1,13 @@
 import Link from "next/link";
-import { getMistakeCount, getTopicProgress } from "@/app/actions";
+import type { Metadata } from "next";
+import { getDashboardStats, getMistakeCount } from "@/app/actions";
+import DashboardPageShell from "@/components/DashboardPageShell";
 import PageHeader from "@/components/PageHeader";
 import { createClient } from "@/lib/supabase/server";
+
+export const metadata: Metadata = {
+  title: "Dashboard · Tutormigo",
+};
 
 function getFirstName(user: {
   email?: string | null;
@@ -25,30 +31,118 @@ function getFirstName(user: {
   return "there";
 }
 
+function scoreDisplay(value: number | null): string {
+  return value == null ? "—" : String(value);
+}
+
 export default async function DashboardPage() {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const [errorCount, topicProgress] = await Promise.all([
+  const [stats, errorCount] = await Promise.all([
+    getDashboardStats(),
     getMistakeCount(),
-    getTopicProgress(),
   ]);
-
   const firstName = getFirstName(user);
 
   return (
-    <div className="h-full overflow-y-auto px-8 pb-10 pt-8 sm:px-10">
+    <DashboardPageShell>
       <PageHeader
         title={`Welcome back, ${firstName}`}
         description="Your practice at a glance"
       />
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {/* Score — muted violet */}
+        <div className="flex flex-col rounded-2xl border-2 border-[#E4DCEA] bg-white p-5">
+          <p className="font-sans text-xs font-medium uppercase tracking-wide text-arc-muted">
+            Score
+          </p>
+          <div className="mt-2 flex min-h-[2.5rem] items-end gap-3">
+            {stats.goalScore != null ? (
+              <p className="font-sans text-3xl font-semibold tabular-nums leading-none text-arc-ink">
+                {stats.goalScore}
+              </p>
+            ) : (
+              <Link
+                href="/settings"
+                className="font-sans text-base font-medium leading-snug text-arc-ink underline-offset-2 hover:underline"
+              >
+                Set a goal score
+              </Link>
+            )}
+          </div>
+          <p className="mt-2 font-sans text-sm text-arc-muted">
+            Predicted {scoreDisplay(stats.predictedScore)}
+          </p>
+          <p className="mt-1 font-sans text-xs text-arc-muted">
+            Math {scoreDisplay(stats.mathScore)} · R&amp;W{" "}
+            {scoreDisplay(stats.rwScore)}
+          </p>
+        </div>
+
+        {/* Questions Attempted — muted blue */}
+        <div className="flex flex-col rounded-2xl border-2 border-[#D5E2EE] bg-white p-5">
+          <p className="font-sans text-xs font-medium uppercase tracking-wide text-arc-muted">
+            Questions Attempted
+          </p>
+          <div className="mt-2 flex min-h-[2.5rem] items-end">
+            <p className="font-sans text-3xl font-semibold tabular-nums leading-none text-arc-ink">
+              {stats.totalAttempts}
+            </p>
+          </div>
+          <p className="mt-2 font-sans text-sm text-arc-muted">
+            Today: {stats.todayAttempts}
+          </p>
+        </div>
+
+        {/* Current Accuracy — muted soft orange */}
+        <div className="flex flex-col rounded-2xl border-2 border-[#EEDFD0] bg-white p-5">
+          <p className="font-sans text-xs font-medium uppercase tracking-wide text-arc-muted">
+            Current Accuracy
+          </p>
+          <div className="mt-2 flex min-h-[2.5rem] items-end">
+            <p className="font-sans text-3xl font-semibold tabular-nums leading-none text-arc-ink">
+              {stats.accuracyPercent == null ? "—" : `${stats.accuracyPercent}%`}
+            </p>
+          </div>
+          <p className="mt-2 font-sans text-sm text-arc-muted">
+            {stats.correctAttempts} correct
+          </p>
+        </div>
+
+        {/* Study Streak — muted periwinkle / blue-purple */}
+        <div className="flex flex-col rounded-2xl border-2 border-[#DBDDED] bg-white p-5">
+          <p className="font-sans text-xs font-medium uppercase tracking-wide text-arc-muted">
+            Study Streak
+          </p>
+          <div className="mt-2 flex min-h-[2.5rem] items-end">
+            {stats.streak > 0 ? (
+              <p className="font-sans text-3xl font-semibold tabular-nums leading-none text-arc-ink">
+                {stats.streak}
+                <span className="ml-1 text-base font-medium text-arc-muted">
+                  {stats.streak === 1 ? "day" : "days"}
+                </span>
+              </p>
+            ) : (
+              <p className="font-sans text-lg font-medium leading-none text-arc-ink">
+                Start your streak
+              </p>
+            )}
+          </div>
+          <p className="mt-2 font-sans text-sm text-arc-muted">
+            {stats.streak > 0
+              ? "Consecutive days practiced"
+              : "Answer a question to begin"}
+          </p>
+        </div>
+
+        {/* Mistakes — muted terracotta / orange-rose */}
         <Link
           href="/mistakes"
-          className="flex flex-col rounded-2xl border-2 border-[#E5E7EB] bg-white p-5 transition duration-200 hover:border-[#C4C4C4]"
+          className="flex flex-col rounded-2xl border-2 border-[#ECDDD9] bg-white p-5 transition duration-200 hover:border-[#DCC8C3]"
         >
           <p className="font-sans text-xs font-medium uppercase tracking-wide text-arc-muted">
             Mistakes
@@ -63,55 +157,24 @@ export default async function DashboardPage() {
           </p>
         </Link>
 
+        {/* Question Bank — muted slate-blue */}
         <Link
           href="/question-bank"
-          className="flex flex-col rounded-2xl border-2 border-[#E5E7EB] bg-white p-5 transition duration-200 hover:border-[#C4C4C4]"
+          className="flex flex-col rounded-2xl border-2 border-[#D2DFE8] bg-white p-5 transition duration-200 hover:border-[#BCCDD9]"
         >
           <p className="font-sans text-xs font-medium uppercase tracking-wide text-arc-muted">
             Question Bank
           </p>
           <div className="mt-2 flex min-h-[2.5rem] items-end">
-            <p className="font-sans text-lg font-medium leading-none text-arc-ink">Keep practicing</p>
+            <p className="font-sans text-lg font-medium leading-none text-arc-ink">
+              Keep practicing
+            </p>
           </div>
-          <p className="mt-2 font-sans text-sm font-medium text-arc-muted">Open question bank →</p>
+          <p className="mt-2 font-sans text-sm font-medium text-arc-muted">
+            Open question bank →
+          </p>
         </Link>
       </div>
-
-      <section className="mt-10">
-        <h2 className="font-sans text-lg font-semibold text-[#3F3F46]">Accuracy by topic</h2>
-        <p className="mt-1 font-sans text-base font-normal leading-[1.6] text-arc-muted">
-          Progress across SAT domains from your practice attempts
-        </p>
-
-        <ul className="mt-5 divide-y divide-arc-line border-y border-arc-line">
-          {topicProgress.map((item) => {
-            const pctComplete =
-              item.total === 0 ? 0 : Math.min(100, Math.round((item.completed / item.total) * 100));
-            return (
-              <li key={item.topic} className="flex flex-col gap-2 py-4 sm:flex-row sm:items-center sm:gap-6">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-baseline justify-between gap-3">
-                    <p className="font-sans text-sm font-medium text-arc-ink">{item.topic}</p>
-                    <p className="shrink-0 font-sans text-xs tabular-nums text-arc-muted">
-                      {item.completed} / {item.total}
-                    </p>
-                  </div>
-                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#EFEFEF]">
-                    <div
-                      className="h-full rounded-full bg-[#9CA3AF] transition-[width]"
-                      style={{ width: `${pctComplete}%` }}
-                    />
-                  </div>
-                </div>
-                <p className="shrink-0 font-sans text-sm tabular-nums text-arc-ink sm:w-16 sm:text-right">
-                  <span className="font-semibold">{item.accuracy}%</span>
-                  <span className="ml-1 text-arc-muted">acc</span>
-                </p>
-              </li>
-            );
-          })}
-        </ul>
-      </section>
-    </div>
+    </DashboardPageShell>
   );
 }

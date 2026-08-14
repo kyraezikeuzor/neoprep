@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { MATH_DOMAINS, READING_DOMAINS, type SubjectFilter, type TierFilter } from "@/lib/subjects";
 import { revalidatePath } from "next/cache";
 
@@ -346,6 +347,207 @@ export async function getAttemptCount(): Promise<number> {
   return count ?? 0;
 }
 
+export type DashboardStats = {
+  goalScore: number | null;
+  predictedScore: number | null;
+  mathScore: number | null;
+  rwScore: number | null;
+  totalAttempts: number;
+  todayAttempts: number;
+  correctAttempts: number;
+  /** 0–100; null when there are no attempts */
+  accuracyPercent: number | null;
+  streak: number;
+};
+
+function toLocalDateKey(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function shiftLocalDateKey(key: string, deltaDays: number): string {
+  const [y, m, d] = key.split("-").map(Number);
+  const dt = new Date(y!, m! - 1, d!);
+  dt.setDate(dt.getDate() + deltaDays);
+  return toLocalDateKey(dt);
+}
+
+function computeStreak(dateKeys: Set<string>): number {
+  if (dateKeys.size === 0) return 0;
+  const today = toLocalDateKey(new Date());
+  const yesterday = shiftLocalDateKey(today, -1);
+  let cursor: string;
+  if (dateKeys.has(today)) cursor = today;
+  else if (dateKeys.has(yesterday)) cursor = yesterday;
+  else return 0;
+
+  let streak = 0;
+  while (dateKeys.has(cursor)) {
+    streak += 1;
+    cursor = shiftLocalDateKey(cursor, -1);
+  }
+  return streak;
+}
+
+/** Aggregate attempt + profile stats for the student dashboard cards. */
+export async function getDashboardStats(): Promise<DashboardStats> {
+  const empty: DashboardStats = {
+    goalScore: null,
+    predictedScore: null,
+    mathScore: null,
+    rwScore: null,
+    totalAttempts: 0,
+    todayAttempts: 0,
+    correctAttempts: 0,
+    accuracyPercent: null,
+    streak: 0,
+  };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return empty;
+
+  // Goal score comes from students.target_score.
+  // Prediction / section sub-scores are not implemented yet.
+  let goalScore: number | null = null;
+  {
+    const admin = createAdminClient();
+    const { data: student, error: studentError } = await admin
+      .from("students")
+      .select("target_score")
+      .eq("id", user.id)
+      .maybeSingle();
+    if (
+      !studentError &&
+      student?.target_score != null &&
+      Number.isFinite(Number(student.target_score))
+    ) {
+      goalScore = Number(student.target_score);
+    }
+  }
+
+  const { data: attempts, error } = await supabase
+    .from("attempts")
+    .select("is_correct, attempted_at")
+    .eq("user_id", user.id);
+
+  if (error) {
+    console.error("getDashboardStats attempts error:", error);
+    return { ...empty, goalScore };
+  }
+
+  const rows = attempts ?? [];
+  const todayKey = toLocalDateKey(new Date());
+  let todayAttempts = 0;
+  let correctAttempts = 0;
+  const dateKeys = new Set<string>();
+
+  for (const row of rows) {
+    if (row.is_correct === true) correctAttempts += 1;
+    const raw = row.attempted_at as string | null;
+    if (!raw) continue;
+    const key = toLocalDateKey(new Date(raw));
+    dateKeys.add(key);
+    if (key === todayKey) todayAttempts += 1;
+  }
+
+  const totalAttempts = rows.length;
+  return {
+    goalScore,
+    predictedScore: null,
+    mathScore: null,
+    rwScore: null,
+    totalAttempts,
+    todayAttempts,
+    correctAttempts,
+    accuracyPercent:
+      totalAttempts > 0
+        ? Math.round((correctAttempts / totalAttempts) * 100)
+        : null,
+    streak: computeStreak(dateKeys),
+  };
+}
+
+export async function getGoalScore(): Promise<number | null> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("students")
+    .select("target_score")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (error || data?.target_score == null) return null;
+  const n = Number(data.target_score);
+  return Number.isFinite(n) ? n : null;
+}
+
+export async function updateGoalScore(
+  score: number | null
+): Promise<
+  { ok: true; goalScore: number | null } | { ok: false; error: string }
+> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Not signed in." };
+
+  let goalScore: number | null = null;
+  if (score != null && !Number.isNaN(score)) {
+    const rounded = Math.round(score);
+    if (rounded < 400 || rounded > 1600) {
+      return { ok: false, error: "Enter a score between 400 and 1600." };
+    }
+    goalScore = rounded;
+  }
+
+  const admin = createAdminClient();
+  const { data: existing, error: lookupError } = await admin
+    .from("students")
+    .select("id")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (lookupError) {
+    console.error("updateGoalScore lookup error:", lookupError);
+    return { ok: false, error: "Could not save goal score. Try again." };
+  }
+
+  if (existing) {
+    const { error } = await admin
+      .from("students")
+      .update({ target_score: goalScore })
+      .eq("id", user.id);
+    if (error) {
+      console.error("updateGoalScore update error:", error);
+      return { ok: false, error: "Could not save goal score. Try again." };
+    }
+  } else {
+    const { error } = await admin.from("students").insert({
+      id: user.id,
+      target_score: goalScore,
+    });
+    if (error) {
+      console.error("updateGoalScore insert error:", error);
+      return { ok: false, error: "Could not save goal score. Try again." };
+    }
+  }
+
+  revalidatePath("/settings");
+  revalidatePath("/dashboard");
+  return { ok: true, goalScore };
+}
+
 export type TopicProgress = {
   topic: string;
   /** Unique questions the user has attempted in this topic */
@@ -356,7 +558,140 @@ export type TopicProgress = {
   accuracy: number;
 };
 
+export type SkillProgress = {
+  skill: string;
+  domain: string | null;
+  /** Unique questions the user has attempted in this skill */
+  completed: number;
+  /** Total questions available in this skill */
+  total: number;
+};
+
+export type BankOverview = {
+  /** Unique questions the user has attempted */
+  completed: number;
+  /** Total questions in the bank */
+  total: number;
+  /** Correct attempts ÷ all attempts (0–100) */
+  accuracy: number;
+};
+
 const ALL_TOPICS = [...MATH_DOMAINS, ...READING_DOMAINS];
+
+export async function getBankOverview(): Promise<BankOverview> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { count: totalCount, error: totalError } = await supabase
+    .from("questions")
+    .select("*", { count: "exact", head: true });
+
+  if (totalError) {
+    console.error("getBankOverview total error:", totalError);
+  }
+
+  let completed = 0;
+  let attempts = 0;
+  let correct = 0;
+
+  if (user) {
+    const { data: attemptRows, error: attemptError } = await supabase
+      .from("attempts")
+      .select("question_id, is_correct")
+      .eq("user_id", user.id);
+
+    if (attemptError) {
+      console.error("getBankOverview attempts error:", attemptError);
+    } else {
+      const unique = new Set<string>();
+      for (const row of attemptRows ?? []) {
+        if (row.question_id) unique.add(row.question_id as string);
+        attempts += 1;
+        if (row.is_correct === true) correct += 1;
+      }
+      completed = unique.size;
+    }
+  }
+
+  return {
+    completed,
+    total: totalCount ?? 0,
+    accuracy: attempts === 0 ? 0 : Math.round((correct / attempts) * 100),
+  };
+}
+
+/** Per-skill completion from questions.skill + user attempts (same attempt tracking as overall stats). */
+export async function getSkillProgress(): Promise<SkillProgress[]> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { data: questionRows, error: questionError } = await supabase
+    .from("questions")
+    .select("question_id, skill, domain");
+
+  if (questionError) {
+    console.error("getSkillProgress questions error:", questionError);
+    return [];
+  }
+
+  type Agg = { domain: string | null; total: number; ids: Set<string> };
+  const bySkill = new Map<string, Agg>();
+
+  for (const row of questionRows ?? []) {
+    const skill = ((row.skill as string | null) ?? "").trim() || "Uncategorized";
+    const domain = (row.domain as string | null) ?? null;
+    if (!bySkill.has(skill)) {
+      bySkill.set(skill, { domain, total: 0, ids: new Set() });
+    }
+    const agg = bySkill.get(skill)!;
+    agg.total += 1;
+    if (!agg.domain && domain) agg.domain = domain;
+  }
+
+  if (user) {
+    const { data: attemptRows, error: attemptError } = await supabase
+      .from("attempts")
+      .select("question_id, questions(skill)")
+      .eq("user_id", user.id);
+
+    if (attemptError) {
+      console.error("getSkillProgress attempts error:", attemptError);
+    } else {
+      for (const row of attemptRows ?? []) {
+        const q = row.questions as
+          | { skill: string | null }
+          | { skill: string | null }[]
+          | null;
+        const question = Array.isArray(q) ? q[0] : q;
+        const skill = (question?.skill ?? "").trim() || "Uncategorized";
+        if (!bySkill.has(skill)) continue;
+        if (row.question_id) {
+          bySkill.get(skill)!.ids.add(row.question_id as string);
+        }
+      }
+    }
+  }
+
+  const domainOrder = new Map(ALL_TOPICS.map((d, i) => [d, i]));
+
+  return [...bySkill.entries()]
+    .map(([skill, agg]) => ({
+      skill,
+      domain: agg.domain,
+      completed: agg.ids.size,
+      total: agg.total,
+    }))
+    .sort((a, b) => {
+      const da = a.domain ? (domainOrder.get(a.domain as (typeof ALL_TOPICS)[number]) ?? 99) : 99;
+      const db = b.domain ? (domainOrder.get(b.domain as (typeof ALL_TOPICS)[number]) ?? 99) : 99;
+      if (da !== db) return da - db;
+      return a.skill.localeCompare(b.skill);
+    });
+}
 
 export async function getTopicProgress(): Promise<TopicProgress[]> {
   const supabase = await createClient();

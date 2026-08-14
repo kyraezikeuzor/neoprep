@@ -1,10 +1,20 @@
+import type { Metadata } from "next";
+import { getGoalScore } from "@/app/actions";
+import DashboardPageShell from "@/components/DashboardPageShell";
+import GoalScoreForm from "@/components/GoalScoreForm";
 import PageHeader from "@/components/PageHeader";
 
-export default function SettingsPage() {
+export const metadata: Metadata = {
+  title: "Settings · Tutormigo",
+};
+
+export default async function SettingsPage() {
+  const goalScore = await getGoalScore();
+
   return (
-    <div className="mx-auto h-full max-w-2xl overflow-y-auto px-8 pb-10 pt-8 sm:px-10">
+    <DashboardPageShell narrow>
       <PageHeader title="Settings" description="Manage your ManyPrep preferences." />
-      <p className="mt-10 font-sans text-sm text-arc-muted">Nothing here yet.</p>
-    </div>
+      <GoalScoreForm initialGoalScore={goalScore} />
+    </DashboardPageShell>
   );
 }
