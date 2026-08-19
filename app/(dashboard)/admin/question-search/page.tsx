@@ -4,7 +4,7 @@ import { getProfileRole } from "@/app/actions/bootcamp";
 import QuestionViewer from "@/components/QuestionViewer";
 
 export const metadata: Metadata = {
-  title: "Admin Lookup · NeoPrep",
+  title: "Admin Lookup · Tutormigo",
 };
 
 export default async function AdminQuestionSearchPage({

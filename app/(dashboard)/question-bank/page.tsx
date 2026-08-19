@@ -37,7 +37,7 @@ export async function generateMetadata({
   const inPractice =
     searchParams?.practice === "1" || Boolean(searchParams?.question?.trim());
   return {
-    title: inPractice ? "Practice · NeoPrep" : "Question Bank · NeoPrep",
+    title: inPractice ? "Practice · Tutormigo" : "Question Bank · Tutormigo",
   };
 }
 

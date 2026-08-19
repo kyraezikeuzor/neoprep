@@ -21,18 +21,18 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const bootcampId = Number(params.id);
   if (!Number.isFinite(bootcampId) || !params.studentId) {
-    return { title: "Student · NeoPrep" };
+    return { title: "Student · Tutormigo" };
   }
   try {
     const detail = await getAdminStudentBootcampDetail(
       bootcampId,
       params.studentId
     );
-    if (!detail) return { title: "Student · NeoPrep" };
+    if (!detail) return { title: "Student · Tutormigo" };
     const name = detail.full_name?.trim() || "Student";
-    return { title: `${name} · NeoPrep` };
+    return { title: `${name} · Tutormigo` };
   } catch {
-    return { title: "Student · NeoPrep" };
+    return { title: "Student · Tutormigo" };
   }
 }
 

@@ -7,7 +7,7 @@ import LeaderboardTable from "@/components/LeaderboardTable";
 import PageHeader from "@/components/PageHeader";
 
 export const metadata: Metadata = {
-  title: "Admin Leaderboard · NeoPrep",
+  title: "Admin Leaderboard · Tutormigo",
 };
 
 export default async function AdminLeaderboardPage() {

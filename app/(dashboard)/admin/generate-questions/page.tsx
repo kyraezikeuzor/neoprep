@@ -7,7 +7,7 @@ import PageHeader from "@/components/PageHeader";
 import SkillsGenerationTable from "@/components/admin/SkillsGenerationTable";
 
 export const metadata: Metadata = {
-  title: "Generate · NeoPrep",
+  title: "Generate · Tutormigo",
 };
 
 export default async function AdminGenerateQuestionsPage() {

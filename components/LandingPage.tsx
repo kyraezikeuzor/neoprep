@@ -39,19 +39,19 @@ const FAQS: { q: string; a: string }[] = [
   },
   {
     q: "What do I get as a platform participant?",
-    a: "One week of live SAT instruction (two hours of group teaching), access to 1,000 original SAT practice questions with explanations, the NeoPrep Discord community, and full platform access for the platform period.",
+    a: "One week of live SAT instruction (two hours of group teaching), access to 1,000 original SAT practice questions with explanations, the Tutormigo Discord community, and full platform access for the platform period.",
   },
   {
     q: "What are platform participants expected to do?",
-    a: "Practice regularly, attend the live session when you can, report bugs or confusing questions, share honest feedback, and complete occasional short surveys. Your input helps us improve NeoPrep before public launch.",
+    a: "Practice regularly, attend the live session when you can, report bugs or confusing questions, share honest feedback, and complete occasional short surveys. Your input helps us improve Tutormigo before public launch.",
   },
   {
     q: "Are these official College Board questions?",
-    a: "No. NeoPrep’s bank is 1,000 original questions designed to reflect the format, skills, and difficulty of the SAT — not official College Board material.",
+    a: "No. Tutormigo’s bank is 1,000 original questions designed to reflect the format, skills, and difficulty of the SAT — not official College Board material.",
   },
   {
     q: "What happens when the platform period ends?",
-    a: "NeoPrep may transition to a paid program later. Participation does not obligate you to purchase anything. We’ll share future pricing and terms before anyone is asked to pay.",
+    a: "Tutormigo may transition to a paid program later. Participation does not obligate you to purchase anything. We’ll share future pricing and terms before anyone is asked to pay.",
   },
 ];
 
@@ -116,13 +116,13 @@ export default function LandingPage() {
           <Link href="/" className="flex items-center gap-2">
             <Image
               src="/neoprep-logo.png"
-              alt="NeoPrep"
+              alt="Tutormigo"
               width={28}
               height={28}
               className="h-7 w-7 rounded-lg object-cover"
               priority
             />
-            <span className={`text-lg font-medium ${headingTrack} ${ink}`}>NeoPrep</span>
+            <span className={`text-lg font-medium ${headingTrack} ${ink}`}>Tutormigo</span>
           </Link>
           <nav className={`hidden items-center gap-6 text-base font-medium ${muted} md:flex`}>
             <a href="#platform" className="transition hover:text-[#111111]">
@@ -166,7 +166,7 @@ export default function LandingPage() {
               Get better at the SAT, one question at a time.
             </h1>
             <p className="landing-body mt-5 text-base font-normal leading-relaxed text-[#71717A] sm:text-lg">
-              Join the NeoPrep platform for free. Get 1,000 original SAT questions, clear
+              Join the Tutormigo platform for free. Get 1,000 original SAT questions, clear
               explanations, live group instruction, and a community to keep you on track.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
@@ -195,7 +195,7 @@ export default function LandingPage() {
                   <div className="relative h-full w-full overflow-hidden rounded-full">
                     <Image
                       src="/landing/kyra-hero.jpg"
-                      alt="Kyra, NeoPrep tutor"
+                      alt="Kyra, Tutormigo tutor"
                       fill
                       priority
                       sizes="(max-width: 640px) 70vw, 360px"
@@ -216,7 +216,7 @@ export default function LandingPage() {
                   Learn from a 1560 scorer.
                 </h2>
                 <p className="landing-body mt-1.5 text-sm leading-relaxed text-[#71717A]">
-                  I&apos;m Kyra. I built NeoPrep to help students practice with clear
+                  I&apos;m Kyra. I built Tutormigo to help students practice with clear
                   explanations and real SAT structure.
                 </p>
               </div>
@@ -239,7 +239,7 @@ export default function LandingPage() {
             <div className={`mt-8 overflow-hidden rounded-3xl ${border} bg-white`}>
               <Image
                 src="/landing/dashboard.jpg"
-                alt="NeoPrep question bank dashboard"
+                alt="Tutormigo question bank dashboard"
                 width={1024}
                 height={499}
                 className="h-auto w-full"
@@ -259,7 +259,7 @@ export default function LandingPage() {
             <div className={`mt-8 overflow-hidden rounded-3xl ${border} bg-white`}>
               <Image
                 src="/landing/question-explanation.jpg"
-                alt="NeoPrep practice question with explanation panel"
+                alt="Tutormigo practice question with explanation panel"
                 width={1024}
                 height={497}
                 className="h-auto w-full"
@@ -393,7 +393,7 @@ export default function LandingPage() {
           <div className={`rounded-3xl ${border} bg-white p-6 sm:p-8`}>
             <h2 className={`text-xl font-medium ${headingTrack} ${ink}`}>Platform program policy</h2>
             <p className={`landing-body mt-2 text-sm leading-relaxed ${muted}`}>
-              The NeoPrep Platform Program is free. You get live instruction, the question bank,
+              The Tutormigo Platform Program is free. You get live instruction, the question bank,
               Discord, and platform access. In return, we ask you to
               practice, share feedback, and report issues. You will not be automatically
               charged when the free platform period ends.
@@ -444,7 +444,7 @@ export default function LandingPage() {
         <div
           className={`landing-body mx-auto flex max-w-[70rem] flex-col items-center justify-between gap-3 px-6 text-sm ${muted} sm:flex-row sm:px-10 lg:px-14`}
         >
-          <p>© {new Date().getFullYear()} NeoPrep</p>
+          <p>© {new Date().getFullYear()} Tutormigo</p>
           <div className="flex gap-4">
             <Link href="/login" className="transition hover:text-[#111111]">
               Join free platform

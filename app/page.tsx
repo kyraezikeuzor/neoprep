@@ -4,7 +4,7 @@ import LandingPage from "@/components/LandingPage";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
-  title: "NeoPrep · Get better at the SAT, one question at a time",
+  title: "Tutormigo · Get better at the SAT, one question at a time",
   description: "Get better at the SAT, one question at a time.",
 };
 

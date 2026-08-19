@@ -5,7 +5,7 @@ import DashboardPageShell from "@/components/DashboardPageShell";
 import PageHeader from "@/components/PageHeader";
 
 export const metadata: Metadata = {
-  title: "Recent Errors · NeoPrep",
+  title: "Recent Errors · Tutormigo",
 };
 
 function truncateStem(stem: string, max = 140) {

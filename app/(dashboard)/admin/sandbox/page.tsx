@@ -7,7 +7,7 @@ import PageHeader from "@/components/PageHeader";
 import StagingReviewLanding from "@/components/admin/StagingReviewLanding";
 
 export const metadata: Metadata = {
-  title: "Admin Editor · NeoPrep",
+  title: "Admin Editor · Tutormigo",
 };
 
 export default async function AdminSandboxPage({

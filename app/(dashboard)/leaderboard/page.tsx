@@ -5,7 +5,7 @@ import LeaderboardTable from "@/components/LeaderboardTable";
 import PageHeader from "@/components/PageHeader";
 
 export const metadata: Metadata = {
-  title: "Leaderboard · NeoPrep",
+  title: "Leaderboard · Tutormigo",
 };
 
 /** Flip to true when ready to show live XP rankings again. */

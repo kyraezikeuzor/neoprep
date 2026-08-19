@@ -6,7 +6,7 @@ import QuestionCard from "@/components/QuestionCard";
 import { PracticeSessionProvider } from "@/components/PracticeSessionProvider";
 
 export const metadata: Metadata = {
-  title: "Question Viewer · NeoPrep",
+  title: "Question Viewer · Tutormigo",
 };
 
 export default async function AdminQuestionViewerPage({

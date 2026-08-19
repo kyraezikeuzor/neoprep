@@ -7,7 +7,7 @@ import PageHeader from "@/components/PageHeader";
 import FeedbackQueueList from "@/components/admin/FeedbackQueueList";
 
 export const metadata: Metadata = {
-  title: "Admin Feedback · NeoPrep",
+  title: "Admin Feedback · Tutormigo",
 };
 
 export default async function AdminFeedbackPage() {

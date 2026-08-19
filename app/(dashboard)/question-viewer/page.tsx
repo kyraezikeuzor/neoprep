@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { getProfileRole } from "@/app/actions/bootcamp";
 
 export const metadata: Metadata = {
-  title: "Question Search · NeoPrep",
+  title: "Question Search · Tutormigo",
 };
 
 export default async function QuestionViewerPage({

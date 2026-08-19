@@ -284,14 +284,14 @@ export default function Sidebar({
         <div className="flex h-14 shrink-0 items-center gap-2.5 border-b border-white/20 px-4">
           <Image
             src="/neoprep-mark-white.png"
-            alt="NeoPrep"
+            alt="Tutormigo"
             width={28}
             height={28}
             className="h-7 w-7 shrink-0 object-contain"
             priority
           />
           <span className="min-w-0 flex-1 truncate font-sans text-lg font-semibold tracking-tight text-white">
-            NeoPrep
+            Tutormigo
           </span>
           {showCloseButton ? (
             <button

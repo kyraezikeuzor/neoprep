@@ -19,13 +19,13 @@ export async function generateMetadata({
   params: { id: string };
 }): Promise<Metadata> {
   const bootcampId = Number(params.id);
-  if (!Number.isFinite(bootcampId)) return { title: "Admin · NeoPrep" };
+  if (!Number.isFinite(bootcampId)) return { title: "Admin · Tutormigo" };
   try {
     const bootcamp = await getAdminBootcamp(bootcampId);
-    if (!bootcamp) return { title: "Admin · NeoPrep" };
-    return { title: `${bootcamp.name} · NeoPrep` };
+    if (!bootcamp) return { title: "Admin · Tutormigo" };
+    return { title: `${bootcamp.name} · Tutormigo` };
   } catch {
-    return { title: "Admin · NeoPrep" };
+    return { title: "Admin · Tutormigo" };
   }
 }
 

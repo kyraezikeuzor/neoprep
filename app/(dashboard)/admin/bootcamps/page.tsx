@@ -6,7 +6,7 @@ import PageHeader from "@/components/PageHeader";
 import AdminBootcampManager from "@/components/admin/AdminBootcampManager";
 
 export const metadata: Metadata = {
-  title: "Admin Bootcamps · NeoPrep",
+  title: "Admin Bootcamps · Tutormigo",
 };
 
 export default async function AdminBootcampsPage() {

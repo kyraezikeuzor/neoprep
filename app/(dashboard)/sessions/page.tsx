@@ -5,7 +5,7 @@ import DashboardPageShell from "@/components/DashboardPageShell";
 import PageHeader from "@/components/PageHeader";
 
 export const metadata: Metadata = {
-  title: "Sessions · NeoPrep",
+  title: "Sessions · Tutormigo",
 };
 
 function CalendarIcon() {

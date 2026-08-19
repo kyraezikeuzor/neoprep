@@ -9,7 +9,7 @@ import StagingReview from "@/components/admin/StagingReview";
 import type { SubjectFilter, TierFilter } from "@/lib/subjects";
 
 export const metadata: Metadata = {
-  title: "Review Questions · NeoPrep",
+  title: "Review Questions · Tutormigo",
 };
 
 function parseSubject(value: string | undefined): SubjectFilter {

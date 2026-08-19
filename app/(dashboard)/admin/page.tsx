@@ -9,7 +9,7 @@ import PageHeader from "@/components/PageHeader";
 import AdminMetricsOverview from "@/components/admin/AdminMetricsOverview";
 
 export const metadata: Metadata = {
-  title: "Dashboard · NeoPrep",
+  title: "Dashboard · Tutormigo",
 };
 
 export default async function AdminPage() {

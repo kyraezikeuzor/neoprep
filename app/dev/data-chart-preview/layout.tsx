@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Chart Preview · NeoPrep",
+  title: "Chart Preview · Tutormigo",
 };
 
 export default function DataChartPreviewLayout({

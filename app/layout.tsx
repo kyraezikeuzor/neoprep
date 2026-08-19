@@ -4,7 +4,7 @@ import NextTopLoader from "nextjs-toploader";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "NeoPrep",
+  title: "Tutormigo",
   description: "Get better at the SAT, one question at a time.",
 };
 

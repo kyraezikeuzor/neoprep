@@ -49,14 +49,14 @@ export default function ExplainerPreviewCard({
           <div className="flex items-center gap-2">
             <Image
               src="/neoprep-mark-white.png"
-              alt="NeoPrep"
+              alt="Tutormigo"
               width={24}
               height={24}
               className="h-5 w-5 object-contain sm:h-6 sm:w-6"
               priority
             />
             <span className="font-sans text-xs font-semibold tracking-tight text-white sm:text-sm">
-              NeoPrep
+              Tutormigo
             </span>
           </div>
           <div className="text-right font-sans text-[9px] font-medium text-white/65 sm:text-[10px]">

@@ -9,7 +9,7 @@ import DashboardPageShell from "@/components/DashboardPageShell";
 import PageHeader from "@/components/PageHeader";
 
 export const metadata: Metadata = {
-  title: "Assignments · NeoPrep",
+  title: "Assignments · Tutormigo",
 };
 
 function formatDate(iso: string | null) {

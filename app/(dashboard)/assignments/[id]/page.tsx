@@ -13,14 +13,14 @@ export async function generateMetadata({
   params: { id: string };
 }): Promise<Metadata> {
   const assignmentId = params.id?.trim();
-  if (!assignmentId) return { title: "Assignment · NeoPrep" };
+  if (!assignmentId) return { title: "Assignment · Tutormigo" };
 
   try {
     const assignment = await getAssignmentForPractice(assignmentId);
-    if (!assignment) return { title: "Assignment · NeoPrep" };
-    return { title: `${assignment.title} · NeoPrep` };
+    if (!assignment) return { title: "Assignment · Tutormigo" };
+    return { title: `${assignment.title} · Tutormigo` };
   } catch {
-    return { title: "Assignment · NeoPrep" };
+    return { title: "Assignment · Tutormigo" };
   }
 }
 

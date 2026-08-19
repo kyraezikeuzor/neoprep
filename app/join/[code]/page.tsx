@@ -12,8 +12,8 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const code = decodeURIComponent(params.code ?? "").trim();
   const bootcamp = await getBootcampByJoinCode(code);
-  if (!bootcamp) return { title: "Join Bootcamp · NeoPrep" };
-  return { title: `Join ${bootcamp.name} · NeoPrep` };
+  if (!bootcamp) return { title: "Join Bootcamp · Tutormigo" };
+  return { title: `Join ${bootcamp.name} · Tutormigo` };
 }
 
 export default async function JoinBootcampPage({
@@ -36,14 +36,14 @@ export default async function JoinBootcampPage({
           <Link href="/" className="inline-flex items-center gap-2.5">
             <Image
               src="/neoprep-logo.png"
-              alt="NeoPrep"
+              alt="Tutormigo"
               width={36}
               height={36}
               className="h-9 w-9 rounded-lg object-cover"
               priority
             />
             <span className="text-2xl font-semibold tracking-tight text-[#18181B]">
-              NeoPrep
+              Tutormigo
             </span>
           </Link>
         </div>

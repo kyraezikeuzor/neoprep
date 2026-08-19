@@ -6,7 +6,7 @@ import PageHeader from "@/components/PageHeader";
 import SignOutButton from "@/components/SignOutButton";
 
 export const metadata: Metadata = {
-  title: "Settings · NeoPrep",
+  title: "Settings · Tutormigo",
 };
 
 export default async function SettingsPage() {

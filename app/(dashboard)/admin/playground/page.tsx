@@ -11,7 +11,7 @@ import PageHeader from "@/components/PageHeader";
 import ExplainerPlayground from "@/components/admin/ExplainerPlayground";
 
 export const metadata: Metadata = {
-  title: "Admin Playground · NeoPrep",
+  title: "Admin Playground · Tutormigo",
 };
 
 export default async function AdminPlaygroundPage({

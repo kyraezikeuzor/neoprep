@@ -104,14 +104,14 @@ export default function LoginPage() {
           <Link href="/" className="inline-flex items-center gap-2.5">
             <Image
               src="/neoprep-logo.png"
-              alt="NeoPrep"
+              alt="Tutormigo"
               width={36}
               height={36}
               className="h-9 w-9 rounded-lg object-cover"
               priority
             />
             <span className="text-2xl font-semibold tracking-tight text-[#18181B]">
-              NeoPrep
+              Tutormigo
             </span>
           </Link>
 
@@ -119,7 +119,7 @@ export default function LoginPage() {
             Create your free account
           </h1>
           <p className="mt-2 text-base text-[#71717A]">
-            Join NeoPrep with Google to start practicing.
+            Join Tutormigo with Google to start practicing.
           </p>
         </div>
 

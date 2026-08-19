@@ -10,7 +10,7 @@ export default function NeoPrepLogo({
   return (
     <Image
       src="/neoprep-logo.png"
-      alt="NeoPrep"
+      alt="Tutormigo"
       width={128}
       height={128}
       priority={priority}
