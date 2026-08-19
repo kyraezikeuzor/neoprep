@@ -222,14 +222,14 @@ export default function Sidebar({
   }));
 
   if (bootcampName) {
-    studentSections.find((section) => section.title === "HOME")?.items.push({
+    studentSections.find((section) => section.title === "PRACTICE")?.items.unshift({
       href: "/assignments",
       label: "Roadmap",
       icon: <AssignmentsIcon />,
     });
     studentSections.find((section) => section.title === "PRACTICE")?.items.push({
       href: "/sessions",
-      label: "Sessions",
+      label: "Live Classes",
       icon: <SessionsIcon />,
     });
   }

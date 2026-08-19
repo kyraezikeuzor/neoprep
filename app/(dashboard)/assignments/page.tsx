@@ -132,7 +132,7 @@ export default async function AssignmentsPage() {
             </section>
             <section className="arc-card flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
               <div><p className="arc-section-label">Live workshop</p><h2 className="mt-1.5 font-sans text-lg font-semibold tracking-tight text-arc-heading">Saturday · Advanced Math Q&amp;A</h2><p className="arc-card-hint mt-1">Bring questions from this week&apos;s Focus Questions.</p></div>
-              <Link href="/sessions" className="arc-btn-secondary min-h-11 shrink-0 px-5 py-2.5">View session</Link>
+              <Link href="/sessions" className="arc-btn-secondary min-h-11 shrink-0 px-5 py-2.5">View live class</Link>
             </section>
             <section className="arc-card flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
               <div><p className="arc-section-label">Optional boost</p><h2 className="mt-1.5 font-sans text-lg font-semibold tracking-tight text-arc-heading">Question Drill: {topic}</h2><p className="arc-card-hint mt-1">10 questions · Based on your recent misses.</p></div>
