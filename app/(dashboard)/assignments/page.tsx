@@ -10,7 +10,7 @@ import PageHeader from "@/components/PageHeader";
 import { isLocalStudentPreview } from "@/lib/devPreview";
 
 export const metadata: Metadata = {
-  title: "Study Roadmap · Tutormigo",
+  title: "Roadmap · Tutormigo",
 };
 
 function isFutureStart(iso: string | null) {
@@ -91,11 +91,11 @@ export default async function AssignmentsPage() {
 
   return (
     <DashboardPageShell>
-      <PageHeader title="Study Roadmap" />
+      <PageHeader title="Roadmap" />
 
       {assignments.length === 0 ? (
         <div className="arc-card mt-8 px-6 py-8 text-center">
-          <p className="arc-card-label">Study Roadmap</p>
+          <p className="arc-card-label">Roadmap</p>
           <p className="mt-2 font-sans text-base font-normal text-arc-heading">
             Your roadmap will appear here soon.
           </p>

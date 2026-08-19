@@ -101,13 +101,13 @@ export default function JoinBootcampClient({
           Welcome to {bootcampName}.
         </p>
         <p className="mt-4 text-sm leading-relaxed text-[#71717A]">
-          Your Study Roadmap is ready in the sidebar.
+          Your Roadmap is ready in the sidebar.
         </p>
         <Link
           href="/assignments"
           className="mt-8 inline-flex w-full items-center justify-center rounded-xl bg-arc-accent px-5 py-3.5 text-base font-semibold text-white transition hover:bg-arc-accentDeep"
         >
-          Go to Study Roadmap
+          Go to Roadmap
         </Link>
         <Link
           href="/dashboard"
@@ -128,7 +128,7 @@ export default function JoinBootcampClient({
         <p className="mt-2 text-base text-[#71717A]">
           {joining
             ? "Adding you to the bootcamp…"
-            : "Finish joining to unlock your Study Roadmap."}
+            : "Finish joining to unlock your Roadmap."}
         </p>
         {error ? (
           <div className="mt-8">
@@ -174,7 +174,7 @@ export default function JoinBootcampClient({
         Join {bootcampName}
       </h1>
       <p className="mt-2 text-base text-[#71717A]">
-        Sign in with Google to join this bootcamp and get your Study Roadmap.
+        Sign in with Google to join this bootcamp and get your Roadmap.
       </p>
 
       <div className="mt-8">
