@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { getStudentSessionsPageData } from "@/app/actions/bootcamp";
 import DashboardPageShell from "@/components/DashboardPageShell";
 import PageHeader from "@/components/PageHeader";
+import { isLocalStudentPreview } from "@/lib/devPreview";
 
 export const metadata: Metadata = {
   title: "Sessions · Tutormigo",
@@ -19,9 +20,26 @@ function CalendarIcon() {
 
 export default async function SessionsPage() {
   const data = await getStudentSessionsPageData();
-  if (!data) redirect("/dashboard");
+  const previewStudent = !data && isLocalStudentPreview;
+  if (!data && !previewStudent) redirect("/dashboard");
 
-  const { next, upcoming, bootcampName } = data;
+  const { next, upcoming, bootcampName } = data ?? {
+    next: {
+      dateLabel: "Saturday",
+      timeLabel: "11:00 AM CT",
+      meetingUrl: null,
+    },
+    upcoming: [
+      {
+        id: "local-preview-session",
+        dateLabel: "Saturday",
+        timeLabel: "11:00 AM CT",
+        status: "scheduled",
+        hasMeetingLink: false,
+      },
+    ],
+    bootcampName: "Live instruction",
+  };
   const canJoin = Boolean(next.meetingUrl);
 
   return (

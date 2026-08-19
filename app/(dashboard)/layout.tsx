@@ -1,6 +1,7 @@
 import DashboardShell from "@/components/DashboardShell";
 import { getDashboardShellStats } from "@/app/actions";
 import { getAuthedUser, getProfileRole, getStudentBootcamp } from "@/app/actions/bootcamp/auth";
+import { isLocalStudentPreview } from "@/lib/devPreview";
 
 function getDisplayName(user: {
   email?: string | null;
@@ -26,13 +27,14 @@ export default async function DashboardLayout({ children }: { children: React.Re
     getProfileRole(),
     getStudentBootcamp(),
   ]);
+  const previewStudent = !user && isLocalStudentPreview;
 
   return (
     <DashboardShell
-      xpTotal={shellStats.xpTotal}
-      streak={shellStats.streak}
-      userName={user ? getDisplayName(user) : "User"}
-      bootcampName={bootcamp?.name ?? null}
+      xpTotal={previewStudent ? 480 : shellStats.xpTotal}
+      streak={previewStudent ? 3 : shellStats.streak}
+      userName={user ? getDisplayName(user) : previewStudent ? "Preview Student" : "User"}
+      bootcampName={bootcamp?.name ?? (previewStudent ? "preview" : null)}
       isAdmin={role === "admin"}
     >
       {children}

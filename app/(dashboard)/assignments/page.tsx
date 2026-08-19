@@ -7,6 +7,7 @@ import {
 } from "@/app/actions/bootcamp";
 import DashboardPageShell from "@/components/DashboardPageShell";
 import PageHeader from "@/components/PageHeader";
+import { isLocalStudentPreview } from "@/lib/devPreview";
 
 export const metadata: Metadata = {
   title: "Roadmap · Tutormigo",
@@ -58,11 +59,33 @@ function LockIcon({ className = "h-4 w-4" }: { className?: string }) {
 
 export default async function AssignmentsPage() {
   const bootcamp = await getStudentBootcamp();
-  if (!bootcamp) {
+  const previewStudent = !bootcamp && isLocalStudentPreview;
+  if (!bootcamp && !previewStudent) {
     redirect("/dashboard");
   }
 
-  const assignments = await listStudentAssignments();
+  const assignments = previewStudent
+    ? [
+        {
+          id: "local-preview-focus-set",
+          title: "Focus Set: Equivalent Expressions",
+          due_date: null,
+          created_at: null,
+          start_date: null,
+          question_count: 12,
+          completed_count: 5,
+        },
+        {
+          id: "local-preview-next-set",
+          title: "Focus Set: Percentages",
+          due_date: null,
+          created_at: null,
+          start_date: "2099-01-01",
+          question_count: 10,
+          completed_count: 0,
+        },
+      ]
+    : await listStudentAssignments();
 
   return (
     <DashboardPageShell>
@@ -154,7 +177,7 @@ export default async function AssignmentsPage() {
                   <div className="sm:min-w-[7.5rem] sm:text-right">
                     {hasQuestions && !isFutureStart(a.start_date) ? (
                       <Link
-                        href={`/assignments/${a.id}`}
+                        href={previewStudent ? "/question-bank" : `/assignments/${a.id}`}
                         className="arc-btn-primary min-h-11 w-full px-6 py-2.5 sm:w-auto"
                       >
                         {actionLabel}

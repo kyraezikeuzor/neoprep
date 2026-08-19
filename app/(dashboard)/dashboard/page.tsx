@@ -5,6 +5,7 @@ import { getDashboardStats, getMistakeCount } from "@/app/actions";
 import { getAuthedUser } from "@/app/actions/bootcamp/auth";
 import DashboardPageShell from "@/components/DashboardPageShell";
 import PageHeader from "@/components/PageHeader";
+import { isLocalStudentPreview } from "@/lib/devPreview";
 
 export const metadata: Metadata = {
   title: "Dashboard · Tutormigo",
@@ -149,7 +150,22 @@ export default async function DashboardPage() {
     getDashboardStats(),
     getMistakeCount(),
   ]);
-  const firstName = getFirstName(user);
+  const previewStudent = !user && isLocalStudentPreview;
+  const displayStats = previewStudent
+    ? {
+        goalScore: 1450,
+        predictedScore: 1320,
+        mathScore: 680,
+        rwScore: 640,
+        totalAttempts: 86,
+        todayAttempts: 12,
+        correctAttempts: 64,
+        accuracyPercent: 74,
+        streak: 3,
+      }
+    : stats;
+  const displayErrorCount = previewStudent ? 8 : errorCount;
+  const firstName = previewStudent ? "Jordan" : getFirstName(user);
 
   return (
     <DashboardPageShell>
@@ -162,8 +178,8 @@ export default async function DashboardPage() {
           <StatCell
             label="Target score"
             value={
-              stats.goalScore != null ? (
-                scoreDisplay(stats.goalScore)
+              displayStats.goalScore != null ? (
+                scoreDisplay(displayStats.goalScore)
               ) : (
                 <Link
                   href="/settings"
@@ -184,16 +200,16 @@ export default async function DashboardPage() {
           />
           <StatCell
             label="Questions attempted"
-            value={stats.totalAttempts}
-            hint={`Today: ${stats.todayAttempts}`}
+            value={displayStats.totalAttempts}
+            hint={`Today: ${displayStats.todayAttempts}`}
             icon={<CheckIcon />}
           />
           <StatCell
             label="Current accuracy"
             value={
-              stats.accuracyPercent == null ? "—" : `${stats.accuracyPercent}%`
+              displayStats.accuracyPercent == null ? "—" : `${displayStats.accuracyPercent}%`
             }
-            hint={`${stats.correctAttempts} correct`}
+            hint={`${displayStats.correctAttempts} correct`}
             icon={<ChartIcon />}
           />
         </div>
@@ -202,11 +218,11 @@ export default async function DashboardPage() {
           <StatCell
             label="Study streak"
             value={
-              stats.streak > 0 ? (
+              displayStats.streak > 0 ? (
                 <>
-                  {stats.streak}
+                  {displayStats.streak}
                   <span className="ml-1.5 text-base font-normal text-[#8F8F98]">
-                    {stats.streak === 1 ? "day" : "days"}
+                    {displayStats.streak === 1 ? "day" : "days"}
                   </span>
                 </>
               ) : (
@@ -216,7 +232,7 @@ export default async function DashboardPage() {
               )
             }
             hint={
-              stats.streak > 0
+              displayStats.streak > 0
                 ? "Consecutive days practiced"
                 : "Answer a question to begin"
             }
@@ -224,8 +240,8 @@ export default async function DashboardPage() {
           />
           <StatCell
             label="Mistakes"
-            value={errorCount}
-            hint={errorCount === 0 ? "No missed questions" : undefined}
+            value={displayErrorCount}
+            hint={displayErrorCount === 0 ? "No missed questions" : undefined}
             icon={<XCircleIcon />}
             action={
               <Link
