@@ -221,26 +221,17 @@ export default function Sidebar({
     items: [...section.items],
   }));
 
-  const bootcampSection = bootcampName
-    ? {
-        title: "BOOTCAMP",
-        items: [
-          {
-            href: "/assignments",
-            label: "Roadmap",
-            icon: <AssignmentsIcon />,
-          },
-          {
-            href: "/sessions",
-            label: "Sessions",
-            icon: <SessionsIcon />,
-          },
-        ],
-      }
-    : null;
-
-  if (bootcampSection) {
-    studentSections.splice(1, 0, bootcampSection);
+  if (bootcampName) {
+    studentSections.find((section) => section.title === "HOME")?.items.push({
+      href: "/assignments",
+      label: "Roadmap",
+      icon: <AssignmentsIcon />,
+    });
+    studentSections.find((section) => section.title === "PRACTICE")?.items.push({
+      href: "/sessions",
+      label: "Sessions",
+      icon: <SessionsIcon />,
+    });
   }
 
   let sections = studentSections;
@@ -264,10 +255,6 @@ export default function Sidebar({
         items: [{ href: "/question-bank", label: "Question Bank", icon: <BooksIcon /> }],
       },
     ];
-
-    if (bootcampSection) {
-      sections.push(bootcampSection);
-    }
   }
 
   async function handleSignOut() {
