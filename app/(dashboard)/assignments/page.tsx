@@ -119,7 +119,7 @@ export default async function AssignmentsPage() {
         return (
           <div className="mt-8 space-y-4">
             <section className="arc-card px-5 py-5 sm:px-6 lg:sticky lg:top-4 lg:z-10">
-              <p className="arc-card-label">YOUR CURRENT FOCUS</p>
+              <p className="arc-section-label">Your current focus</p>
               <div className="mt-2 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
                 <div className="min-w-0 flex-1">
                   <h2 className="font-sans text-xl font-semibold tracking-tight text-arc-heading">Focus Questions: {topic}</h2>
@@ -131,14 +131,14 @@ export default async function AssignmentsPage() {
               </div>
             </section>
             <section className="arc-card flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-              <div><p className="arc-card-label">LIVE WORKSHOP</p><h2 className="mt-1.5 font-sans text-lg font-semibold tracking-tight text-arc-heading">Saturday · Advanced Math Q&amp;A</h2><p className="arc-card-hint mt-1">Bring questions from this week&apos;s Focus Questions.</p></div>
+              <div><p className="arc-section-label">Live workshop</p><h2 className="mt-1.5 font-sans text-lg font-semibold tracking-tight text-arc-heading">Saturday · Advanced Math Q&amp;A</h2><p className="arc-card-hint mt-1">Bring questions from this week&apos;s Focus Questions.</p></div>
               <Link href="/sessions" className="arc-btn-secondary min-h-11 shrink-0 px-5 py-2.5">View session</Link>
             </section>
             <section className="arc-card flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-              <div><p className="arc-card-label">OPTIONAL BOOST</p><h2 className="mt-1.5 font-sans text-lg font-semibold tracking-tight text-arc-heading">Question Drill: {topic}</h2><p className="arc-card-hint mt-1">10 questions · Based on your recent misses.</p></div>
+              <div><p className="arc-section-label">Optional boost</p><h2 className="mt-1.5 font-sans text-lg font-semibold tracking-tight text-arc-heading">Question Drill: {topic}</h2><p className="arc-card-hint mt-1">10 questions · Based on your recent misses.</p></div>
               <Link href="/question-bank?practice=1&subject=math&tier=2&count=10" className="arc-btn-secondary min-h-11 shrink-0 px-5 py-2.5">Start drill</Link>
             </section>
-            {upNext ? <section className="arc-card flex flex-col gap-4 border-dashed px-5 py-5 opacity-75 sm:flex-row sm:items-center sm:justify-between sm:px-6"><div><p className="arc-card-label">UP NEXT — LOCKED</p><h2 className="mt-1.5 font-sans text-lg font-semibold tracking-tight text-arc-heading">Focus Questions: {focusTitle(upNext.title)}</h2><p className="arc-card-hint mt-1">Finish your current Focus Questions to unlock this next step.</p></div><LockIcon className="h-5 w-5 shrink-0 text-arc-muted" /></section> : null}
+            {upNext ? <section className="arc-card flex flex-col gap-4 border-dashed px-5 py-5 opacity-75 sm:flex-row sm:items-center sm:justify-between sm:px-6"><div><p className="arc-section-label">Up next · locked</p><h2 className="mt-1.5 font-sans text-lg font-semibold tracking-tight text-arc-heading">Focus Questions: {focusTitle(upNext.title)}</h2><p className="arc-card-hint mt-1">Finish your current Focus Questions to unlock this next step.</p></div><LockIcon className="h-5 w-5 shrink-0 text-arc-muted" /></section> : null}
             {completedFocuses.length ? <details className="arc-card px-5 py-4 sm:px-6"><summary className="cursor-pointer font-sans text-sm font-semibold text-arc-heading">Completed Focus Questions ({completedFocuses.length})</summary><div className="mt-4 space-y-3 border-t border-arc-line pt-4">{completedFocuses.map((assignment) => <div key={assignment.id} className="flex items-center justify-between gap-4"><div><p className="font-sans text-sm font-medium text-arc-heading">{focusTitle(assignment.title)}</p><p className="arc-card-hint mt-0.5 text-xs">{assignment.question_count} of {assignment.question_count} complete</p></div><span className="text-sm font-medium text-arc-muted">Completed</span></div>)}</div></details> : null}
           </div>
         );

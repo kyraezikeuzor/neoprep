@@ -28,6 +28,11 @@ body {
     color: #8f8f98;
   }
 
+  .arc-section-label {
+    @apply font-sans text-base font-normal sm:text-lg;
+    color: #8f8f98;
+  }
+
   .arc-card-hint {
     @apply font-sans text-sm font-normal;
     color: #8f8f98;
