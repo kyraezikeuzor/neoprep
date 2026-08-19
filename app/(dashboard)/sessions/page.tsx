@@ -6,7 +6,7 @@ import PageHeader from "@/components/PageHeader";
 import { isLocalStudentPreview } from "@/lib/devPreview";
 
 export const metadata: Metadata = {
-  title: "Live Classes · Tutormigo",
+  title: "Join Classes · Tutormigo",
 };
 
 function CalendarIcon() {
@@ -44,7 +44,7 @@ export default async function SessionsPage() {
 
   return (
     <DashboardPageShell>
-      <PageHeader title="Live Classes" />
+      <PageHeader title="Join Classes" />
 
       <div className="arc-card mt-8 grid divide-y divide-arc-line lg:grid-cols-3 lg:divide-x lg:divide-y-0">
         <div className="relative min-h-[9.5rem] overflow-hidden px-6 py-5">
