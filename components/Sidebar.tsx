@@ -238,7 +238,7 @@ export default function Sidebar({
     });
     studentSections.find((section) => section.title === "LEARN")?.items.push({
       href: "/sessions",
-      label: "Sessions",
+      label: "Classes",
       icon: <SessionsIcon />,
     });
   }

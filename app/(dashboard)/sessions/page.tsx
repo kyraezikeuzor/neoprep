@@ -6,7 +6,7 @@ import PageHeader from "@/components/PageHeader";
 import { isLocalStudentPreview } from "@/lib/devPreview";
 
 export const metadata: Metadata = {
-  title: "Sessions · Tutormigo",
+  title: "Classes · Tutormigo",
 };
 
 function CalendarIcon() {
@@ -44,11 +44,11 @@ export default async function SessionsPage() {
 
   return (
     <DashboardPageShell>
-      <PageHeader title="Sessions" />
+      <PageHeader title="Classes" />
 
       <div className="arc-card mt-8 grid divide-y divide-arc-line lg:grid-cols-3 lg:divide-x lg:divide-y-0">
         <div className="relative min-h-[9.5rem] overflow-hidden px-6 py-5">
-          <p className="arc-card-label">Next session</p>
+          <p className="arc-card-label">Next class</p>
           <p className="mt-3 font-sans text-xl font-normal leading-snug tracking-tight text-arc-heading sm:text-2xl">
             {next.dateLabel}
           </p>
@@ -76,7 +76,7 @@ export default async function SessionsPage() {
                 rel="noopener noreferrer"
                 className="inline-flex items-center justify-center rounded-full border border-arc-line bg-white px-3 py-1 font-sans text-xs font-medium text-[#8F8F98] transition hover:bg-arc-soft"
               >
-                Join session
+                Join class
               </a>
             ) : (
               <>
@@ -85,7 +85,7 @@ export default async function SessionsPage() {
                   disabled
                   className="inline-flex cursor-not-allowed items-center justify-center rounded-full border border-arc-line bg-arc-soft px-3 py-1 font-sans text-xs font-medium text-[#8F8F98]"
                 >
-                  Join session
+                  Join class
                 </button>
                 <p className="arc-card-hint mt-2">
                   Meeting link not yet available.
@@ -101,13 +101,13 @@ export default async function SessionsPage() {
 
       <div className="mt-10">
         <h2 className="font-sans text-base font-medium text-arc-heading">
-          Upcoming sessions
+          Upcoming classes
         </h2>
         {upcoming.length === 0 ? (
           <div className="arc-card relative mt-4 min-h-[8rem] overflow-hidden px-6 py-5">
             <p className="arc-card-label">Upcoming</p>
             <p className="mt-3 font-sans text-xl font-normal text-arc-heading">None scheduled</p>
-            <p className="arc-card-hint mt-2">Check back for new session times.</p>
+            <p className="arc-card-hint mt-2">Check back for new class times.</p>
             <div className="pointer-events-none absolute -bottom-3 -right-2 text-arc-line">
               <CalendarIcon />
             </div>
