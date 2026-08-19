@@ -224,7 +224,7 @@ export default function Sidebar({
   if (bootcampName) {
     studentSections.find((section) => section.title === "PRACTICE")?.items.unshift({
       href: "/assignments",
-      label: "Roadmap",
+      label: "Study Roadmap",
       icon: <AssignmentsIcon />,
     });
     studentSections.find((section) => section.title === "PRACTICE")?.items.push({
