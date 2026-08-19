@@ -42,7 +42,7 @@ export default async function AssignmentPracticePage({
     return (
       <div className="flex h-full items-center justify-center px-8">
         <p className="font-sans text-sm text-arc-muted">
-          These Focus Questions have no questions yet.
+          This Question Set has no questions yet.
         </p>
       </div>
     );

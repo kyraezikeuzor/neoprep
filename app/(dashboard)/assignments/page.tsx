@@ -25,7 +25,7 @@ function isFutureStart(iso: string | null) {
 }
 
 function focusTitle(title: string) {
-  return title.replace(/^Focus Questions:\s*/i, "");
+  return title.replace(/^(?:Focus Questions|Question Set):\s*/i, "");
 }
 
 function LockIcon({ className = "h-4 w-4" }: { className?: string }) {
@@ -61,7 +61,7 @@ export default async function AssignmentsPage() {
     ? [
         {
           id: "local-preview-completed-set",
-          title: "Focus Questions: Linear Equations",
+          title: "Question Set: Linear Equations",
           due_date: null,
           created_at: null,
           start_date: null,
@@ -70,7 +70,7 @@ export default async function AssignmentsPage() {
         },
         {
           id: "local-preview-focus-set",
-          title: "Focus Questions: Equivalent Expressions",
+          title: "Question Set: Equivalent Expressions",
           due_date: null,
           created_at: null,
           start_date: null,
@@ -79,7 +79,7 @@ export default async function AssignmentsPage() {
         },
         {
           id: "local-preview-next-set",
-          title: "Focus Questions: Percentages",
+          title: "Question Set: Percentages",
           due_date: null,
           created_at: null,
           start_date: "2099-01-01",
@@ -122,7 +122,7 @@ export default async function AssignmentsPage() {
               <p className="arc-section-label">Your current focus</p>
               <div className="mt-2 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
                 <div className="min-w-0 flex-1">
-                  <h2 className="font-sans text-xl font-semibold tracking-tight text-arc-heading">Focus Questions: {topic}</h2>
+                  <h2 className="font-sans text-xl font-semibold tracking-tight text-arc-heading">Question Set: {topic}</h2>
                   <p className="arc-card-hint mt-1.5">{canOpen ? remaining === 0 ? "You finished this focus — review it to reinforce the pattern." : `${remaining} question${remaining === 1 ? "" : "s"} left · unlock your next focus by finishing this one` : "This focus will unlock when your current work is complete."}</p>
                   <div className="mt-4 h-1.5 max-w-md overflow-hidden rounded-full bg-arc-soft"><div className="h-full rounded-full bg-arc-accent transition-[width]" style={{ width: `${pct}%` }} /></div>
                   <p className="arc-card-hint mt-1.5 text-xs">{completed} of {total} complete</p>
@@ -131,15 +131,15 @@ export default async function AssignmentsPage() {
               </div>
             </section>
             <section className="arc-card flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-              <div><p className="arc-section-label">Live workshop</p><h2 className="mt-1.5 font-sans text-lg font-semibold tracking-tight text-arc-heading">Saturday · Advanced Math Q&amp;A</h2><p className="arc-card-hint mt-1">Bring questions from this week&apos;s Focus Questions.</p></div>
+              <div><p className="arc-section-label">Live workshop</p><h2 className="mt-1.5 font-sans text-lg font-semibold tracking-tight text-arc-heading">Saturday · Advanced Math Q&amp;A</h2><p className="arc-card-hint mt-1">Bring questions from this week&apos;s Question Set.</p></div>
               <Link href="/sessions" className="arc-btn-secondary min-h-11 shrink-0 px-5 py-2.5">View live lesson</Link>
             </section>
             <section className="arc-card flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
               <div><p className="arc-section-label">Optional boost</p><h2 className="mt-1.5 font-sans text-lg font-semibold tracking-tight text-arc-heading">Question Drill: {topic}</h2><p className="arc-card-hint mt-1">10 questions · Based on your recent misses.</p></div>
               <Link href="/question-bank?practice=1&subject=math&tier=2&count=10" className="arc-btn-secondary min-h-11 shrink-0 px-5 py-2.5">Start drill</Link>
             </section>
-            {upNext ? <section className="arc-card flex flex-col gap-4 border-dashed px-5 py-5 opacity-75 sm:flex-row sm:items-center sm:justify-between sm:px-6"><div><p className="arc-section-label">Up next · locked</p><h2 className="mt-1.5 font-sans text-lg font-semibold tracking-tight text-arc-heading">Focus Questions: {focusTitle(upNext.title)}</h2><p className="arc-card-hint mt-1">Finish your current Focus Questions to unlock this next step.</p></div><LockIcon className="h-5 w-5 shrink-0 text-arc-muted" /></section> : null}
-            {completedFocuses.length ? <details className="arc-card px-5 py-4 sm:px-6"><summary className="cursor-pointer font-sans text-sm font-semibold text-arc-heading">Completed Focus Questions ({completedFocuses.length})</summary><div className="mt-4 space-y-3 border-t border-arc-line pt-4">{completedFocuses.map((assignment) => <div key={assignment.id} className="flex items-center justify-between gap-4"><div><p className="font-sans text-sm font-medium text-arc-heading">{focusTitle(assignment.title)}</p><p className="arc-card-hint mt-0.5 text-xs">{assignment.question_count} of {assignment.question_count} complete</p></div><span className="text-sm font-medium text-arc-muted">Completed</span></div>)}</div></details> : null}
+            {upNext ? <section className="arc-card flex flex-col gap-4 border-dashed px-5 py-5 opacity-75 sm:flex-row sm:items-center sm:justify-between sm:px-6"><div><p className="arc-section-label">Up next · locked</p><h2 className="mt-1.5 font-sans text-lg font-semibold tracking-tight text-arc-heading">Question Set: {focusTitle(upNext.title)}</h2><p className="arc-card-hint mt-1">Finish your current Question Set to unlock this next step.</p></div><LockIcon className="h-5 w-5 shrink-0 text-arc-muted" /></section> : null}
+            {completedFocuses.length ? <details className="arc-card px-5 py-4 sm:px-6"><summary className="cursor-pointer font-sans text-sm font-semibold text-arc-heading">Completed Question Sets ({completedFocuses.length})</summary><div className="mt-4 space-y-3 border-t border-arc-line pt-4">{completedFocuses.map((assignment) => <div key={assignment.id} className="flex items-center justify-between gap-4"><div><p className="font-sans text-sm font-medium text-arc-heading">{focusTitle(assignment.title)}</p><p className="arc-card-hint mt-0.5 text-xs">{assignment.question_count} of {assignment.question_count} complete</p></div><span className="text-sm font-medium text-arc-muted">Completed</span></div>)}</div></details> : null}
           </div>
         );
       })()}
