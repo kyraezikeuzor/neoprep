@@ -60,6 +60,15 @@ export default async function AssignmentsPage() {
   const assignments = previewStudent
     ? [
         {
+          id: "local-preview-completed-set",
+          title: "Focus Questions: Linear Equations",
+          due_date: null,
+          created_at: null,
+          start_date: null,
+          question_count: 10,
+          completed_count: 10,
+        },
+        {
           id: "local-preview-focus-set",
           title: "Focus Questions: Equivalent Expressions",
           due_date: null,
@@ -96,7 +105,9 @@ export default async function AssignmentsPage() {
           assignments.find((assignment) => assignment.question_count > 0 && !isFutureStart(assignment.start_date) && assignment.completed_count < assignment.question_count) ??
           assignments.find((assignment) => assignment.question_count > 0 && !isFutureStart(assignment.start_date)) ??
           assignments[0];
-        const upNext = assignments.find((assignment) => assignment.id !== current.id && (!assignment.question_count || isFutureStart(assignment.start_date)));
+        const currentIndex = assignments.findIndex((assignment) => assignment.id === current.id);
+        const upNext = assignments.slice(currentIndex + 1).find((assignment) => assignment.question_count > 0);
+        const completedFocuses = assignments.filter((assignment) => assignment.id !== current.id && assignment.question_count > 0 && assignment.completed_count >= assignment.question_count);
         const total = current.question_count;
         const completed = current.completed_count;
         const remaining = Math.max(total - completed, 0);
@@ -107,7 +118,7 @@ export default async function AssignmentsPage() {
 
         return (
           <div className="mt-8 space-y-4">
-            <section className="arc-card px-5 py-5 sm:px-6">
+            <section className="arc-card px-5 py-5 sm:px-6 lg:sticky lg:top-4 lg:z-10">
               <p className="arc-card-label">YOUR CURRENT FOCUS</p>
               <div className="mt-2 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
                 <div className="min-w-0 flex-1">
@@ -124,10 +135,11 @@ export default async function AssignmentsPage() {
               <Link href="/sessions" className="arc-btn-secondary min-h-11 shrink-0 px-5 py-2.5">View session</Link>
             </section>
             <section className="arc-card flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-              <div><p className="arc-card-label">OPTIONAL BOOST</p><h2 className="mt-1.5 font-sans text-lg font-semibold tracking-tight text-arc-heading">10-question drill: {topic}</h2><p className="arc-card-hint mt-1">Based on your recent misses.</p></div>
+              <div><p className="arc-card-label">OPTIONAL BOOST</p><h2 className="mt-1.5 font-sans text-lg font-semibold tracking-tight text-arc-heading">Question Drill: {topic}</h2><p className="arc-card-hint mt-1">10 questions · Based on your recent misses.</p></div>
               <Link href="/question-bank?practice=1&subject=math&tier=2&count=10" className="arc-btn-secondary min-h-11 shrink-0 px-5 py-2.5">Start drill</Link>
             </section>
             {upNext ? <section className="arc-card flex flex-col gap-4 border-dashed px-5 py-5 opacity-75 sm:flex-row sm:items-center sm:justify-between sm:px-6"><div><p className="arc-card-label">UP NEXT — LOCKED</p><h2 className="mt-1.5 font-sans text-lg font-semibold tracking-tight text-arc-heading">Focus Questions: {focusTitle(upNext.title)}</h2><p className="arc-card-hint mt-1">Finish your current Focus Questions to unlock this next step.</p></div><LockIcon className="h-5 w-5 shrink-0 text-arc-muted" /></section> : null}
+            {completedFocuses.length ? <details className="arc-card px-5 py-4 sm:px-6"><summary className="cursor-pointer font-sans text-sm font-semibold text-arc-heading">Completed Focus Questions ({completedFocuses.length})</summary><div className="mt-4 space-y-3 border-t border-arc-line pt-4">{completedFocuses.map((assignment) => <div key={assignment.id} className="flex items-center justify-between gap-4"><div><p className="font-sans text-sm font-medium text-arc-heading">{focusTitle(assignment.title)}</p><p className="arc-card-hint mt-0.5 text-xs">{assignment.question_count} of {assignment.question_count} complete</p></div><span className="text-sm font-medium text-arc-muted">Completed</span></div>)}</div></details> : null}
           </div>
         );
       })()}
