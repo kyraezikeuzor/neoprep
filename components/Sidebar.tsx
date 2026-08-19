@@ -149,9 +149,14 @@ const BASE_SECTIONS: { title: string; items: NavItem[] }[] = [
     ],
   },
   {
-    title: "TRACK",
+    title: "COMMUNITY",
     items: [
       { href: "/leaderboard", label: "Leaderboard", icon: <LeaderboardIcon /> },
+    ],
+  },
+  {
+    title: "TRACK",
+    items: [
       { href: "/mistakes", label: "Mistakes", icon: <MistakesIcon /> },
       { href: "/saved", label: "Saved", icon: <SavedIcon /> },
     ],
