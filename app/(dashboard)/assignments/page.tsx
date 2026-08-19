@@ -13,17 +13,6 @@ export const metadata: Metadata = {
   title: "Roadmap · Tutormigo",
 };
 
-function formatDate(iso: string | null) {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
-
 function isFutureStart(iso: string | null) {
   if (!iso) return false;
   const d = new Date(iso);
@@ -33,6 +22,10 @@ function isFutureStart(iso: string | null) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   return start.getTime() > today.getTime();
+}
+
+function focusTitle(title: string) {
+  return title.replace(/^Focus Questions:\s*/i, "");
 }
 
 function LockIcon({ className = "h-4 w-4" }: { className?: string }) {
@@ -98,110 +91,46 @@ export default async function AssignmentsPage() {
             Your roadmap will appear here soon.
           </p>
         </div>
-      ) : (
-        <ul className="mt-8 space-y-3">
-          {assignments.map((a) => {
-            const hasQuestions = a.question_count > 0;
-            const pct =
-              a.question_count === 0
-                ? 0
-                : Math.min(
-                    100,
-                    Math.round((a.completed_count / a.question_count) * 100)
-                  );
-            const isComplete =
-              hasQuestions && a.completed_count >= a.question_count;
-            const locked = !hasQuestions || isFutureStart(a.start_date);
-            const progressLabel = hasQuestions
-              ? `${a.completed_count}/${a.question_count}`
-              : "0/0";
+      ) : (() => {
+        const current =
+          assignments.find((assignment) => assignment.question_count > 0 && !isFutureStart(assignment.start_date) && assignment.completed_count < assignment.question_count) ??
+          assignments.find((assignment) => assignment.question_count > 0 && !isFutureStart(assignment.start_date)) ??
+          assignments[0];
+        const upNext = assignments.find((assignment) => assignment.id !== current.id && (!assignment.question_count || isFutureStart(assignment.start_date)));
+        const total = current.question_count;
+        const completed = current.completed_count;
+        const remaining = Math.max(total - completed, 0);
+        const pct = total ? Math.round((completed / total) * 100) : 0;
+        const canOpen = total > 0 && !isFutureStart(current.start_date);
+        const currentHref = previewStudent ? "/question-bank?practice=1&subject=math&tier=2&count=10" : `/assignments/${current.id}`;
+        const topic = focusTitle(current.title);
 
-            let actionLabel = "Start";
-            if (isComplete) actionLabel = "Review";
-            else if (a.completed_count > 0) actionLabel = "Continue";
-
-            return (
-              <li
-                key={a.id}
-                className="arc-card flex flex-col gap-4 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:px-6"
-              >
-                {/* What this is */}
+        return (
+          <div className="mt-8 space-y-4">
+            <section className="arc-card px-5 py-5 sm:px-6">
+              <p className="arc-card-label">YOUR CURRENT FOCUS</p>
+              <div className="mt-2 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <p className="arc-card-label">Focus Questions</p>
-                    {locked ? (
-                      <span
-                        className="inline-flex text-[#8F8F98]"
-                        title={
-                          !hasQuestions
-                            ? "No questions attached yet"
-                            : `Opens ${formatDate(a.start_date)}`
-                        }
-                      >
-                        <LockIcon className="h-3.5 w-3.5" />
-                      </span>
-                    ) : null}
-                  </div>
-                  <p className="mt-1.5 font-sans text-lg font-normal leading-snug tracking-tight text-arc-heading">
-                    {a.title}
-                  </p>
-                  <p className="arc-card-hint mt-1.5">
-                    Start {formatDate(a.start_date)} · Due{" "}
-                    {formatDate(a.due_date)}
-                  </p>
+                  <h2 className="font-sans text-xl font-semibold tracking-tight text-arc-heading">Focus Questions: {topic}</h2>
+                  <p className="arc-card-hint mt-1.5">{canOpen ? remaining === 0 ? "You finished this focus — review it to reinforce the pattern." : `${remaining} question${remaining === 1 ? "" : "s"} left · unlock your next focus by finishing this one` : "This focus will unlock when your current work is complete."}</p>
+                  <div className="mt-4 h-1.5 max-w-md overflow-hidden rounded-full bg-arc-soft"><div className="h-full rounded-full bg-arc-accent transition-[width]" style={{ width: `${pct}%` }} /></div>
+                  <p className="arc-card-hint mt-1.5 text-xs">{completed} of {total} complete</p>
                 </div>
-
-                {/* How far along + what to do next */}
-                <div className="flex shrink-0 flex-col gap-4 sm:flex-row sm:items-center sm:gap-5">
-                  <div className="min-w-[7.5rem] sm:w-36">
-                    <p className="arc-card-label">Progress</p>
-                    <p className="mt-1 font-sans text-2xl font-normal tabular-nums leading-none tracking-tight text-arc-heading">
-                      {progressLabel}
-                    </p>
-                    <div className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-arc-soft">
-                      <div
-                        className="h-full rounded-full bg-arc-accent transition-[width]"
-                        style={{ width: `${pct}%` }}
-                        aria-hidden
-                      />
-                    </div>
-                    <p className="arc-card-hint mt-1.5 text-xs">
-                      {!hasQuestions
-                        ? "Not ready"
-                        : isComplete
-                          ? "Completed"
-                          : `${pct}% complete`}
-                    </p>
-                  </div>
-
-                  <div className="sm:min-w-[7.5rem] sm:text-right">
-                    {hasQuestions && !isFutureStart(a.start_date) ? (
-                      <Link
-                        href={previewStudent ? "/question-bank" : `/assignments/${a.id}`}
-                        className="arc-btn-primary min-h-11 w-full px-6 py-2.5 sm:w-auto"
-                      >
-                        {actionLabel}
-                      </Link>
-                    ) : (
-                      <span
-                        className="inline-flex w-full cursor-not-allowed items-center justify-center gap-1.5 rounded-xl border border-arc-line bg-arc-soft px-5 py-2.5 font-sans text-sm font-semibold text-[#8F8F98] sm:w-auto"
-                        title={
-                          !hasQuestions
-                            ? "No questions attached yet"
-                            : `Opens ${formatDate(a.start_date)}`
-                        }
-                      >
-                        <LockIcon className="h-3.5 w-3.5" />
-                        {!hasQuestions ? "Not ready" : "Locked"}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      )}
+                {canOpen ? <Link href={currentHref} className="arc-btn-primary min-h-11 shrink-0 px-6 py-2.5">{completed > 0 ? "Continue focus" : "Start focus"}</Link> : <span className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-arc-line bg-arc-soft px-5 py-2.5 font-sans text-sm font-semibold text-[#8F8F98]"><LockIcon className="h-3.5 w-3.5" /> Locked</span>}
+              </div>
+            </section>
+            <section className="arc-card flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+              <div><p className="arc-card-label">LIVE WORKSHOP</p><h2 className="mt-1.5 font-sans text-lg font-semibold tracking-tight text-arc-heading">Saturday · Advanced Math Q&amp;A</h2><p className="arc-card-hint mt-1">Bring questions from this week&apos;s Focus Questions.</p></div>
+              <Link href="/sessions" className="arc-btn-secondary min-h-11 shrink-0 px-5 py-2.5">View session</Link>
+            </section>
+            <section className="arc-card flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+              <div><p className="arc-card-label">OPTIONAL BOOST</p><h2 className="mt-1.5 font-sans text-lg font-semibold tracking-tight text-arc-heading">10-question drill: {topic}</h2><p className="arc-card-hint mt-1">Based on your recent misses.</p></div>
+              <Link href="/question-bank?practice=1&subject=math&tier=2&count=10" className="arc-btn-secondary min-h-11 shrink-0 px-5 py-2.5">Start drill</Link>
+            </section>
+            {upNext ? <section className="arc-card flex flex-col gap-4 border-dashed px-5 py-5 opacity-75 sm:flex-row sm:items-center sm:justify-between sm:px-6"><div><p className="arc-card-label">UP NEXT — LOCKED</p><h2 className="mt-1.5 font-sans text-lg font-semibold tracking-tight text-arc-heading">Focus Questions: {focusTitle(upNext.title)}</h2><p className="arc-card-hint mt-1">Finish your current Focus Questions to unlock this next step.</p></div><LockIcon className="h-5 w-5 shrink-0 text-arc-muted" /></section> : null}
+          </div>
+        );
+      })()}
     </DashboardPageShell>
   );
 }
