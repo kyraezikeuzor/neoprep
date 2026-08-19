@@ -187,6 +187,58 @@ function formatEquationBlock(equations: string[]): string {
 export function prepareForMathJax(text: string): string {
   if (!text) return text;
 
+  // Imported JSON occasionally preserves an extra escape slash, turning a
+  // valid delimiter such as \[ into \\[. Normalize only delimiters here so
+  // MathJax receives the syntax it is configured to typeset.
+  text = text
+    .replace(/\\\\([\[\]()])/g, "\\$1");
+
+  // A few legacy AI rationales contain full sentences inside a TeX delimiter.
+  // They cannot be safely recovered as mixed prose/math because the original
+  // delimiter boundaries are wrong. Render those as plain readable text rather
+  // than allowing MathJax to italicize and run every word together.
+  const hasMalformedStepMath =
+    /\bStep\s*\d+/i.test(text) && /\\+[\[(]/.test(text);
+
+  // Repair a common generated-rationale mistake: putting the prose phrase
+  // "of the form" inside a math delimiter, often alongside malformed v0/h0
+  // parameter notation for projectile equations.
+  text = text
+    .replace(
+      /of the\s+\\\(\s*form\s+([\s\S]*?)\\\)/gi,
+      (_match, formula: string) => `of the form \\(${formula.trim()}\\)`
+    )
+    .replace(/\bv0\*(?=\s*[+\-]|\s*$)/g, "v_0")
+    .replace(/\bh0\b/g, "h_0");
+
+  // Imported explanations sometimes omit the space immediately before or
+  // after inline MathJax delimiters. MathJax then visually joins prose to the
+  // formula (for example, "-16gives"), even though they are separate ideas.
+  text = text
+    .replace(/\\\)(?=[A-Za-z])/g, "\\) ")
+    .replace(/([A-Za-z0-9])\\\(/g, "$1 \\(");
+
+  // Some imported/generated rationales incorrectly wrap whole prose steps in
+  // inline-math delimiters, which makes the entire explanation italic and
+  // removes normal word spacing. A rationale that contains a numbered step is
+  // prose, even when it also contains formulas, so remove those bad wrappers.
+  text = text.replace(/\\+\(([\s\S]*?)\\+\)/g, (match, inner: string) => {
+    if (/\b(?:step\s*\d+|identify|substitute|simplify|because|therefore|first|second)\b/i.test(inner)) {
+      return inner;
+    }
+    return match;
+  });
+
+  // Keep legacy explanations readable while older generated rows remain in
+  // the bank. Convert AI-style step labels and dashes into ordinary numbered
+  // prose before MathJax sees the text.
+  if (/\bStep\s*\d+/i.test(text)) {
+    text = text
+      .replace(/[—–]/g, ", ")
+      .replace(/\bStep\s*(\d+)\s*[:,\-]*\s*/gi, "\n$1. ")
+      .replace(/([.!?])\s*(?=\d+\.\s)/g, "$1\n\n");
+  }
+
   const { equations, prose } = splitLeadingEquations(text);
   const eqBlock = formatEquationBlock(equations);
   let s = normalizeExponents(equations.length ? prose : text);
@@ -295,7 +347,9 @@ export function prepareForMathJax(text: string): string {
     // Single newline — display math is already a block; avoid a blank line gap
     return s ? `${eqBlock}\n${s}` : eqBlock;
   }
-  return s;
+  return hasMalformedStepMath
+    ? s.replace(/\\+[\[(]/g, "").replace(/\\+[\])]/g, "")
+    : s;
 }
 
 function alreadyInMath(s: string, index: number) {

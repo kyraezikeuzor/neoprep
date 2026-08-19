@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { getBootcampByJoinCode } from "@/app/bootcamp-actions";
+import { getBootcampByJoinCode } from "@/app/actions/bootcamp";
 import JoinBootcampClient from "@/components/JoinBootcampClient";
 
 export async function generateMetadata({
@@ -12,8 +12,8 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const code = decodeURIComponent(params.code ?? "").trim();
   const bootcamp = await getBootcampByJoinCode(code);
-  if (!bootcamp) return { title: "Join Bootcamp · Tutormigo" };
-  return { title: `Join ${bootcamp.name} · Tutormigo` };
+  if (!bootcamp) return { title: "Join Bootcamp · NeoPrep" };
+  return { title: `Join ${bootcamp.name} · NeoPrep` };
 }
 
 export default async function JoinBootcampPage({
@@ -35,15 +35,15 @@ export default async function JoinBootcampPage({
         <div className="text-center">
           <Link href="/" className="inline-flex items-center gap-2.5">
             <Image
-              src="/tutormigo-logo.png"
-              alt="Tutormigo"
+              src="/neoprep-logo.png"
+              alt="NeoPrep"
               width={36}
               height={36}
               className="h-9 w-9 rounded-lg object-cover"
               priority
             />
             <span className="text-2xl font-semibold tracking-tight text-[#18181B]">
-              Tutormigo
+              NeoPrep
             </span>
           </Link>
         </div>

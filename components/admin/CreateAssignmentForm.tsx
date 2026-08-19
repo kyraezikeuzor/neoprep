@@ -6,7 +6,7 @@ import {
   createAssignment,
   listQuestionsForPicker,
   type BankQuestionOption,
-} from "@/app/bootcamp-actions";
+} from "@/app/actions/bootcamp";
 import type { SubjectFilter, TierFilter } from "@/lib/subjects";
 
 function truncate(stem: string, max = 90) {
@@ -70,7 +70,7 @@ export default function CreateAssignmentForm({ bootcampId }: { bootcampId: numbe
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4 rounded-2xl border-2 border-[#E5E7EB] bg-white p-5">
+    <form onSubmit={onSubmit} className="arc-card space-y-4 p-5">
       <h2 className="font-sans text-base font-semibold text-arc-ink">Create assignment</h2>
 
       <label className="block">
@@ -128,7 +128,7 @@ export default function CreateAssignmentForm({ bootcampId }: { bootcampId: numbe
           type="button"
           onClick={loadQuestions}
           disabled={pending}
-          className="rounded-full border-2 border-[#E5E7EB] px-4 py-2 font-sans text-sm font-semibold text-arc-ink hover:bg-[#F7F7F7] disabled:opacity-60"
+          className="rounded-full border border-arc-line px-4 py-2 font-sans text-sm font-semibold text-arc-ink hover:bg-arc-soft disabled:opacity-60"
         >
           {pending ? "Loading..." : "Apply filters"}
         </button>
@@ -138,12 +138,12 @@ export default function CreateAssignmentForm({ bootcampId }: { bootcampId: numbe
         {selected.size} selected · showing {questions.length} questions
       </p>
 
-      <ul className="max-h-72 space-y-1 overflow-y-auto rounded-xl border border-[#E5E7EB] p-2">
+      <ul className="max-h-72 space-y-1 overflow-y-auto rounded-xl border border-arc-line p-2">
         {questions.map((q) => {
           const checked = selected.has(q.question_id);
           return (
             <li key={q.question_id}>
-              <label className="flex cursor-pointer items-start gap-3 rounded-lg px-2 py-2 hover:bg-[#FAFAFA]">
+              <label className="flex cursor-pointer items-start gap-3 rounded-lg px-2 py-2 hover:bg-arc-bg">
                 <input
                   type="checkbox"
                   checked={checked}
@@ -176,7 +176,7 @@ export default function CreateAssignmentForm({ bootcampId }: { bootcampId: numbe
       <button
         type="submit"
         disabled={loading}
-        className="rounded-full bg-[#007AFF] px-5 py-2.5 font-sans text-sm font-semibold text-white transition hover:bg-[#0066DD] disabled:opacity-60"
+        className="arc-btn-primary disabled:opacity-60"
       >
         {loading ? "Creating..." : "Create assignment"}
       </button>

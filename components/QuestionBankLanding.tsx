@@ -1,34 +1,71 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
-import type { BankOverview, SkillProgress } from "@/app/actions";
+import { useMemo, useState, type ReactNode } from "react";
+import type { BankOverview } from "@/app/actions";
 import type { SubjectFilter, TierFilter } from "@/lib/subjects";
 import DashboardPageShell from "@/components/DashboardPageShell";
 import PageHeader from "@/components/PageHeader";
 
 const SUBJECT_OPTIONS: { value: SubjectFilter; label: string }[] = [
-  { value: "all", label: "All topics" },
+  { value: "all", label: "All" },
   { value: "math", label: "Math" },
-  { value: "reading_writing", label: "Reading & Writing" },
+  { value: "reading_writing", label: "R and W" },
 ];
 
-const TIER_OPTIONS: { value: TierFilter; label: string }[] = [
-  { value: "all", label: "All difficulties" },
+const DIFFICULTY_OPTIONS: { value: TierFilter; label: string }[] = [
+  { value: "all", label: "Random" },
   { value: 1, label: "Easy" },
   { value: 2, label: "Medium" },
   { value: 3, label: "Hard" },
 ];
 
+const COUNT_OPTIONS = [10, 20, 30] as const;
+
+function LightningIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-6 w-6 shrink-0 text-sky-400"
+      fill="currentColor"
+      aria-hidden
+    >
+      <path d="M13.2 2.1a.75.75 0 01.68.42l4.5 9.5a.75.75 0 01-.68 1.08H13l1.35 7.42a.75.75 0 01-1.28.64l-8.5-10.5A.75.75 0 015.2 9.5H9.5L8.05 2.9A.75.75 0 018.75 2h4.45z" />
+    </svg>
+  );
+}
+
+function toggleClass(selected: boolean) {
+  return selected
+    ? "min-h-11 rounded-xl border border-arc-accent bg-arc-accentSoft px-4 py-2.5 font-sans text-sm font-medium text-arc-accent transition"
+    : "min-h-11 rounded-xl border border-arc-line bg-transparent px-4 py-2.5 font-sans text-sm font-medium text-arc-heading transition hover:bg-arc-soft";
+}
+
+function OptionRow({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="px-5 py-4 sm:px-6">
+      <p className="arc-card-label mb-2.5">{label}</p>
+      <div className="flex flex-wrap gap-2">{children}</div>
+    </div>
+  );
+}
+
 export default function QuestionBankLanding({
   overview,
-  skillProgress,
+  streak,
 }: {
   overview: BankOverview;
-  skillProgress: SkillProgress[];
+  streak: number;
 }) {
   const [subject, setSubject] = useState<SubjectFilter>("all");
   const [tier, setTier] = useState<TierFilter>("all");
+  const [count, setCount] = useState<(typeof COUNT_OPTIONS)[number]>(10);
 
   const completionPct =
     overview.total === 0
@@ -36,153 +73,119 @@ export default function QuestionBankLanding({
       : Math.min(100, Math.round((overview.completed / overview.total) * 100));
 
   const practiceHref = useMemo(() => {
-    const params = new URLSearchParams({ practice: "1" });
+    const params = new URLSearchParams({
+      practice: "1",
+      count: String(count),
+    });
     if (subject !== "all") params.set("subject", subject);
     if (tier !== "all") params.set("tier", String(tier));
     return `/question-bank?${params.toString()}`;
-  }, [subject, tier]);
+  }, [subject, tier, count]);
 
-  const filteredSkills = useMemo(() => {
-    if (subject === "all") return skillProgress;
-    const mathish = new Set([
-      "Algebra",
-      "Advanced Math",
-      "Problem-Solving and Data Analysis",
-      "Geometry and Trigonometry",
-    ]);
-    return skillProgress.filter((s) => {
-      if (!s.domain) return true;
-      const isMath = mathish.has(s.domain);
-      return subject === "math" ? isMath : !isMath;
-    });
-  }, [skillProgress, subject]);
+  const streakHint = streak > 0 ? "Keep it going" : "Start practicing to begin";
 
   return (
     <DashboardPageShell>
-        <PageHeader
-          title="Question Bank"
-          description="Practice original SAT-style questions with clear explanations."
-        />
+      <PageHeader title="Question Bank" />
 
-        <div className="mt-8 grid gap-4 sm:grid-cols-2">
-          <div className="rounded-2xl border-2 border-[#E5E7EB] bg-white p-5">
-            <p className="font-sans text-xs font-medium uppercase tracking-wide text-arc-muted">
-              Completion
-            </p>
-            <p className="mt-2 font-sans text-3xl font-semibold tabular-nums leading-none text-arc-ink">
-              {completionPct}%
-            </p>
-            <p className="mt-2 font-sans text-sm text-arc-muted">
-              {overview.completed} / {overview.total} questions
-            </p>
-            <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[#EFEFEF]">
-              <div
-                className="h-full rounded-full bg-[#007AFF]"
-                style={{ width: `${completionPct}%` }}
-              />
-            </div>
-          </div>
+      <div className="mt-6 rounded-2xl border-2 border-arc-line bg-white px-5 py-5 sm:px-6">
+        <div className="flex items-center gap-2.5">
+          <LightningIcon />
+          <h2 className="font-sans text-base font-medium text-arc-heading sm:text-lg">
+            What is Question Bank?
+          </h2>
+        </div>
+        <p className="mt-2 max-w-3xl font-sans text-sm leading-relaxed text-[#71717A] sm:text-[15px]">
+          Question Bank is where you practice at your own pace. Pick a subject
+          and difficulty, work through questions one at a time, and see the full
+          explanation after each answer. Use it to target weak spots between your
+          bootcamp assignments, or just keep your skills sharp.
+        </p>
+      </div>
 
-          <div className="rounded-2xl border-2 border-[#E5E7EB] bg-white p-5">
-            <p className="font-sans text-xs font-medium uppercase tracking-wide text-arc-muted">
-              Accuracy
-            </p>
-            <p className="mt-2 font-sans text-3xl font-semibold tabular-nums leading-none text-arc-ink">
-              {overview.accuracy}%
-            </p>
-            <p className="mt-2 font-sans text-sm text-arc-muted">Across all attempts</p>
-          </div>
+      <div className="arc-card mt-8 grid divide-y divide-arc-line lg:grid-cols-3 lg:divide-x lg:divide-y-0">
+        <div className="px-5 py-5 sm:px-6">
+          <p className="font-sans text-[13px] font-normal text-[#8F8F98]">
+            Completion
+          </p>
+          <p className="mt-2 font-sans text-2xl font-normal tabular-nums leading-none tracking-tight text-arc-heading">
+            {completionPct}%
+          </p>
+          <p className="arc-card-hint mt-2">
+            {overview.completed} of {overview.total}
+          </p>
         </div>
 
-        <div className="mt-8 grid gap-3 sm:grid-cols-2">
-          <label className="flex flex-col gap-1.5">
-            <span className="font-sans text-xs font-medium uppercase tracking-wide text-arc-muted">
-              Topic
-            </span>
-            <select
-              value={subject}
-              onChange={(e) => setSubject(e.target.value as SubjectFilter)}
-              className="rounded-xl border-2 border-[#E5E7EB] bg-white px-3 py-2.5 font-sans text-sm text-arc-ink outline-none transition focus:border-[#007AFF]"
-            >
-              {SUBJECT_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="flex flex-col gap-1.5">
-            <span className="font-sans text-xs font-medium uppercase tracking-wide text-arc-muted">
-              Difficulty
-            </span>
-            <select
-              value={String(tier)}
-              onChange={(e) => {
-                const v = e.target.value;
-                setTier(v === "all" ? "all" : (Number(v) as 1 | 2 | 3));
-              }}
-              className="rounded-xl border-2 border-[#E5E7EB] bg-white px-3 py-2.5 font-sans text-sm text-arc-ink outline-none transition focus:border-[#007AFF]"
-            >
-              {TIER_OPTIONS.map((o) => (
-                <option key={String(o.value)} value={String(o.value)}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-          </label>
+        <div className="px-5 py-5 sm:px-6">
+          <p className="font-sans text-[13px] font-normal text-[#8F8F98]">
+            Accuracy
+          </p>
+          <p className="mt-2 font-sans text-2xl font-normal tabular-nums leading-none tracking-tight text-arc-heading">
+            {overview.accuracy}%
+          </p>
+          <p className="arc-card-hint mt-2">Across all attempts</p>
         </div>
 
-        <div className="mt-6">
-          <Link
-            href={practiceHref}
-            className="inline-flex items-center justify-center rounded-full bg-[#007AFF] px-6 py-3 font-sans text-base font-semibold text-white transition hover:bg-[#0066DD]"
-          >
-            Start Practicing
+        <div className="px-5 py-5 sm:px-6">
+          <p className="font-sans text-[13px] font-normal text-[#8F8F98]">
+            Streak
+          </p>
+          <p className="mt-2 font-sans text-2xl font-normal tabular-nums leading-none tracking-tight text-arc-heading">
+            {streak}
+          </p>
+          <p className="arc-card-hint mt-2">{streakHint}</p>
+        </div>
+      </div>
+
+      <div className="arc-card mt-4 divide-y divide-arc-line">
+        <OptionRow label="Subject">
+          {SUBJECT_OPTIONS.map((o) => (
+            <button
+              key={o.value}
+              type="button"
+              onClick={() => setSubject(o.value)}
+              className={toggleClass(subject === o.value)}
+              aria-pressed={subject === o.value}
+            >
+              {o.label}
+            </button>
+          ))}
+        </OptionRow>
+
+        <OptionRow label="Difficulty">
+          {DIFFICULTY_OPTIONS.map((o) => (
+            <button
+              key={String(o.value)}
+              type="button"
+              onClick={() => setTier(o.value)}
+              className={toggleClass(tier === o.value)}
+              aria-pressed={tier === o.value}
+            >
+              {o.label}
+            </button>
+          ))}
+        </OptionRow>
+
+        <OptionRow label="How many questions">
+          {COUNT_OPTIONS.map((n) => (
+            <button
+              key={n}
+              type="button"
+              onClick={() => setCount(n)}
+              className={toggleClass(count === n)}
+              aria-pressed={count === n}
+            >
+              {n}
+            </button>
+          ))}
+        </OptionRow>
+
+        <div className="px-5 py-5 sm:px-6">
+          <Link href={practiceHref} className="arc-btn-primary w-full py-3 text-base">
+            Start practicing
           </Link>
         </div>
-
-        <section className="mt-10">
-          <h2 className="font-sans text-base font-semibold text-[#3F3F46]">
-            Completion by skill
-          </h2>
-          <p className="mt-1 font-sans text-sm text-arc-muted">
-            Unique questions attempted out of available questions per skill
-          </p>
-
-          {filteredSkills.length === 0 ? (
-            <p className="mt-4 font-sans text-sm text-arc-muted">
-              No skill-level data available yet.
-            </p>
-          ) : (
-            <ul className="mt-4 grid gap-x-8 gap-y-3 sm:grid-cols-2">
-              {filteredSkills.map((item) => {
-                const pct =
-                  item.total === 0
-                    ? 0
-                    : Math.min(100, Math.round((item.completed / item.total) * 100));
-                return (
-                  <li key={item.skill}>
-                    <div className="flex items-baseline justify-between gap-3">
-                      <p className="min-w-0 truncate font-sans text-sm font-medium text-arc-ink">
-                        {item.skill}
-                      </p>
-                      <p className="shrink-0 font-sans text-xs tabular-nums text-arc-muted">
-                        {item.completed}/{item.total}
-                      </p>
-                    </div>
-                    <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[#EFEFEF]">
-                      <div
-                        className="h-full rounded-full bg-[#9CA3AF]"
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </section>
+      </div>
     </DashboardPageShell>
   );
 }

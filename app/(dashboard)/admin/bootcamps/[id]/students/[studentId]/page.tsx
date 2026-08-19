@@ -4,7 +4,7 @@ import Link from "next/link";
 import {
   getAdminStudentBootcampDetail,
   getProfileRole,
-} from "@/app/bootcamp-actions";
+} from "@/app/actions/bootcamp";
 import DashboardPageShell from "@/components/DashboardPageShell";
 import PageHeader from "@/components/PageHeader";
 import StudentIncorrectQuestion from "@/components/admin/StudentIncorrectQuestion";
@@ -21,18 +21,18 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const bootcampId = Number(params.id);
   if (!Number.isFinite(bootcampId) || !params.studentId) {
-    return { title: "Student · Tutormigo" };
+    return { title: "Student · NeoPrep" };
   }
   try {
     const detail = await getAdminStudentBootcampDetail(
       bootcampId,
       params.studentId
     );
-    if (!detail) return { title: "Student · Tutormigo" };
+    if (!detail) return { title: "Student · NeoPrep" };
     const name = detail.full_name?.trim() || "Student";
-    return { title: `${name} · Tutormigo` };
+    return { title: `${name} · NeoPrep` };
   } catch {
-    return { title: "Student · Tutormigo" };
+    return { title: "Student · NeoPrep" };
   }
 }
 
@@ -61,10 +61,7 @@ export default async function AdminStudentBootcampDetailPage({
       >
         ← Back to {detail.bootcamp_name}
       </Link>
-      <PageHeader
-        title={detail.full_name || "Student"}
-        description={detail.email || "No email on file"}
-      />
+      <PageHeader title={detail.full_name || "Student"} />
 
       <section className="mt-8 space-y-6">
         <h2 className="font-sans text-base font-semibold text-arc-ink">
@@ -79,7 +76,7 @@ export default async function AdminStudentBootcampDetailPage({
           detail.assignments.map((assignment) => (
             <article
               key={assignment.assignment_id}
-              className="rounded-2xl border-2 border-[#E5E7EB] bg-white p-5"
+              className="rounded-2xl border-2 border-arc-line bg-white p-5"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
@@ -92,7 +89,7 @@ export default async function AdminStudentBootcampDetailPage({
                 </div>
                 <div className="flex flex-wrap gap-4 font-sans text-sm tabular-nums text-arc-ink">
                   <div>
-                    <p className="text-xs uppercase tracking-wide text-arc-muted">
+                    <p className="arc-card-label">
                       Completed
                     </p>
                     <p className="mt-0.5 font-medium">
@@ -100,7 +97,7 @@ export default async function AdminStudentBootcampDetailPage({
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs uppercase tracking-wide text-arc-muted">
+                    <p className="arc-card-label">
                       Accuracy
                     </p>
                     <p className="mt-0.5 font-medium">
@@ -116,7 +113,7 @@ export default async function AdminStudentBootcampDetailPage({
               </div>
 
               <div className="mt-5">
-                <p className="font-sans text-xs font-medium uppercase tracking-wide text-arc-muted">
+                <p className="arc-card-label">
                   Incorrect questions
                 </p>
                 {assignment.incorrect.length === 0 ? (

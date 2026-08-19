@@ -1,20 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { getQuestionById, type Question } from "@/app/actions";
+import { useRouter } from "next/navigation";
 import DashboardPageShell from "@/components/DashboardPageShell";
-import QuestionCard from "@/components/QuestionCard";
 import PageHeader from "@/components/PageHeader";
 
 export default function QuestionViewer({
-  initialQuestion = null,
   initialId = "",
+  headerTitle = "Question Search",
 }: {
-  initialQuestion?: Question | null;
   initialId?: string;
+  headerTitle?: string;
 }) {
+  const router = useRouter();
   const [inputId, setInputId] = useState(initialId);
-  const [question, setQuestion] = useState<Question | null>(initialQuestion);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -28,28 +27,15 @@ export default function QuestionViewer({
 
     setLoading(true);
     setError("");
-    const result = await getQuestionById(id);
-    setLoading(false);
-
-    if (!result) {
-      setQuestion(null);
-      setError(`No question found for ID “${id}”.`);
-      return;
-    }
-
-    setQuestion(result);
-    setInputId(result.question_id);
+    router.push(`/admin/question-search/view?question=${encodeURIComponent(id)}`);
   }
 
   return (
     <DashboardPageShell narrow>
       <div className="font-sans">
-        <PageHeader
-          title="Question Search"
-          description="Look up any question by its ID (short hex or full UUID)."
-        />
+        <PageHeader title={headerTitle} />
 
-        <div className="mt-5 rounded-2xl border border-[#E8E8E6] bg-[#F9FAFB] p-5 sm:p-6">
+        <div className="arc-card mt-5 p-5 sm:p-6">
           <form onSubmit={handleLookup} className="flex flex-wrap items-center gap-2">
             <input
               type="text"
@@ -69,28 +55,7 @@ export default function QuestionViewer({
           </form>
 
           {error && <p className="mt-3 text-sm text-arc-incorrect">{error}</p>}
-          {question && !error && (
-            <p className="mt-3 text-sm font-normal leading-[1.6] text-arc-muted">
-              Showing{" "}
-              <span className="font-mono font-medium text-arc-ink">{question.question_id}</span>
-            </p>
-          )}
-
-          {question ? (
-            <div className="mt-3 h-[min(70vh,720px)] min-h-[420px] overflow-hidden rounded-xl border border-arc-line bg-white">
-              <QuestionCard
-                key={question.question_id}
-                initialQuestion={question}
-                embedded
-              />
-            </div>
-          ) : (
-            !error && (
-              <p className="mt-8 pb-4 text-center text-base font-normal leading-[1.6] text-arc-muted">
-                Enter a question ID above to view it.
-              </p>
-            )
-          )}
+          {!error && <p className="mt-5 text-center text-base font-normal leading-[1.6] text-arc-muted">Enter a question ID to open it in the full-screen viewer.</p>}
         </div>
       </div>
     </DashboardPageShell>

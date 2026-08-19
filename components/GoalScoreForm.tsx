@@ -45,7 +45,7 @@ export default function GoalScoreForm({
   return (
     <form
       onSubmit={onSubmit}
-      className="mt-8 space-y-4 rounded-2xl border-2 border-[#E5E7EB] bg-white p-5"
+      className="arc-card mt-8 space-y-4 p-5"
     >
       <div>
         <h2 className="font-sans text-base font-semibold text-arc-ink">
@@ -73,7 +73,7 @@ export default function GoalScoreForm({
             setValue(e.target.value);
             setSaved(false);
           }}
-          className="mt-1.5 w-full rounded-xl border border-[#E5E7EB] bg-white px-3 py-2.5 font-sans text-sm text-arc-ink outline-none transition focus:border-[#007AFF]"
+          className="mt-1.5 w-full rounded-xl border border-arc-line bg-white px-3 py-2.5 font-sans text-sm text-arc-ink outline-none transition focus:border-arc-accent"
         />
       </label>
 
@@ -88,7 +88,7 @@ export default function GoalScoreForm({
         <button
           type="submit"
           disabled={loading}
-          className="rounded-xl bg-[#007AFF] px-4 py-2.5 font-sans text-sm font-medium text-white transition hover:bg-[#0066D6] disabled:opacity-60"
+          className="arc-btn-primary"
         >
           {loading ? "Saving…" : "Save goal"}
         </button>
@@ -97,7 +97,7 @@ export default function GoalScoreForm({
             type="button"
             disabled={loading}
             onClick={() => persist(null)}
-            className="rounded-xl border border-[#E5E7EB] bg-white px-4 py-2.5 font-sans text-sm font-medium text-arc-muted transition hover:border-[#C4C4C4] hover:text-arc-ink disabled:opacity-60"
+            className="arc-btn-secondary text-arc-muted"
           >
             Clear
           </button>

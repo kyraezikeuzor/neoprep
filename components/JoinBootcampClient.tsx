@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { joinBootcamp } from "@/app/bootcamp-actions";
+import { joinBootcamp } from "@/app/actions/bootcamp";
 
 function GoogleIcon({ className = "h-5 w-5" }: { className?: string }) {
   return (
@@ -61,6 +61,9 @@ export default function JoinBootcampClient({
         joinStarted.current = false;
         return;
       }
+      if (result.bookingFailed) {
+        console.warn("Cal.com booking failed after join:", result.bookingError);
+      }
       setJoined(true);
       setJoining(false);
       router.refresh();
@@ -102,7 +105,7 @@ export default function JoinBootcampClient({
         </p>
         <Link
           href="/assignments"
-          className="mt-8 inline-flex w-full items-center justify-center rounded-xl bg-[#007AFF] px-5 py-3.5 text-base font-semibold text-white transition hover:bg-[#0066DD]"
+          className="mt-8 inline-flex w-full items-center justify-center rounded-xl bg-arc-accent px-5 py-3.5 text-base font-semibold text-white transition hover:bg-arc-accentDeep"
         >
           Go to Assignments
         </Link>
@@ -145,12 +148,15 @@ export default function JoinBootcampClient({
                     joinStarted.current = false;
                     return;
                   }
+                  if (result.bookingFailed) {
+                    console.warn("Cal.com booking failed after join:", result.bookingError);
+                  }
                   setJoined(true);
                   setJoining(false);
                   router.refresh();
                 })();
               }}
-              className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-[#007AFF] px-5 py-3.5 text-base font-semibold text-white transition hover:bg-[#0066DD]"
+              className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-arc-accent px-5 py-3.5 text-base font-semibold text-white transition hover:bg-arc-accentDeep"
             >
               Try again
             </button>

@@ -10,9 +10,9 @@ export default function DashboardPageShell({
   narrow?: boolean;
 }) {
   return (
-    <div className="h-full overflow-y-auto">
+    <div className="h-full overflow-x-hidden overflow-y-auto">
       <div
-        className={`mx-auto w-full px-10 pb-12 pt-10 sm:px-14 lg:px-16 ${
+        className={`mx-auto w-full px-5 pb-14 pt-5 sm:px-10 sm:pb-16 sm:pt-6 md:px-16 lg:px-24 xl:px-32 ${
           narrow ? "max-w-3xl" : "max-w-6xl"
         }`}
       >

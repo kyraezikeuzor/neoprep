@@ -1,128 +1,24 @@
-"use server";
-
-import { createClient } from "@/lib/supabase/server";
+import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { normalizeChoices } from "@/lib/questions";
 import {
   MATH_DOMAINS,
   READING_DOMAINS,
   type SubjectFilter,
   type TierFilter,
 } from "@/lib/subjects";
-import { revalidatePath } from "next/cache";
-import type { Question } from "@/app/actions";
-
-const QUESTION_SELECT =
-  "question_id, domain, skill, tier, stem, choices, correct_answer, rationale, has_math, graph_spec";
-
-function normalizeChoices(raw: unknown): Record<string, string> | null {
-  if (!raw) return null;
-  if (typeof raw === "object" && !Array.isArray(raw)) {
-    return raw as Record<string, string>;
-  }
-  if (typeof raw !== "string") return null;
-  try {
-    const parsed = JSON.parse(raw);
-    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-      return parsed as Record<string, string>;
-    }
-  } catch {
-    // fall through
-  }
-  try {
-    const asJson = raw.replace(/'/g, '"');
-    const parsed = JSON.parse(asJson);
-    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-      return parsed as Record<string, string>;
-    }
-  } catch {
-    return null;
-  }
-  return null;
-}
-
-function normalizeQuestion(row: Record<string, unknown>): Question {
-  return {
-    ...(row as unknown as Question),
-    choices: normalizeChoices(row.choices),
-    tier: row.tier == null ? null : Number(row.tier),
-  };
-}
-
-export type ProfileRole = "student" | "parent" | "admin";
-
-export type BootcampSummary = {
-  id: number;
-  name: string;
-  join_code: string;
-  start_date: string | null;
-  end_date: string | null;
-  created_at: string | null;
-};
-
-export type AssignmentListItem = {
-  id: string;
-  title: string;
-  due_date: string | null;
-  created_at: string | null;
-  start_date: string | null;
-  question_count: number;
-  completed_count: number;
-};
-
-export type AssignmentDetail = {
-  id: string;
-  title: string;
-  due_date: string | null;
-  bootcamp_id: number;
-  questions: Question[];
-  /** Existing progress for the current student (empty if none). */
-  progress: AssignmentProgressEntry[];
-};
-
-export type AssignmentProgressEntry = {
-  question_id: string;
-  is_correct: boolean;
-  selected_answer: string | null;
-};
-
-export type AdminRosterRow = {
-  student_id: string;
-  full_name: string | null;
-  email: string | null;
-  progress: { assignment_id: string; title: string; completed: number; total: number }[];
-};
-
-export type AdminStudentIncorrectQuestion = {
-  question_id: string;
-  domain: string | null;
-  skill: string | null;
-  stem: string;
-  choices: Record<string, string> | null;
-  correct_answer: string;
-  selected_answer: string | null;
-};
-
-export type AdminStudentAssignmentDetail = {
-  assignment_id: string;
-  title: string;
-  due_date: string | null;
-  total: number;
-  completed: number;
-  correct: number;
-  attempted: number;
-  /** correct / attempted; null when nothing attempted */
-  accuracy: number | null;
-  incorrect: AdminStudentIncorrectQuestion[];
-};
-
-export type AdminStudentBootcampDetail = {
-  student_id: string;
-  full_name: string | null;
-  email: string | null;
-  bootcamp_id: number;
-  bootcamp_name: string;
-  assignments: AdminStudentAssignmentDetail[];
-};
+import { requireAdmin } from "@/app/actions/bootcamp/auth";
+import type {
+  AdminActiveSubscription,
+  AdminMetrics,
+  AdminRosterRow,
+  AdminStudentAssignmentDetail,
+  AdminStudentBootcampDetail,
+  AdminStudentIncorrectQuestion,
+  AssignmentListItem,
+  BankQuestionOption,
+  BootcampSummary,
+} from "@/app/actions/bootcamp/types";
 
 function generateJoinCode(length = 8): string {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -134,426 +30,6 @@ function generateJoinCode(length = 8): string {
   return out;
 }
 
-async function getAuthedUser() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  return { supabase, user };
-}
-
-export async function getProfileRole(): Promise<ProfileRole | null> {
-  const { user } = await getAuthedUser();
-  if (!user) return null;
-  // Use service role: profiles RLS can call is_admin(), which authenticated
-  // users often cannot EXECUTE — blocking even "read own role".
-  const admin = createAdminClient();
-  const { data, error } = await admin
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .maybeSingle();
-  if (error) {
-    console.error("getProfileRole error:", error);
-    return null;
-  }
-  const role = data?.role;
-  if (role === "student" || role === "parent" || role === "admin") return role;
-  return "student";
-}
-
-export async function requireAdmin(): Promise<{ userId: string }> {
-  const { user } = await getAuthedUser();
-  if (!user) throw new Error("Not signed in");
-  const admin = createAdminClient();
-  const { data, error } = await admin
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .maybeSingle();
-  if (error || data?.role !== "admin") {
-    throw new Error("Forbidden");
-  }
-  return { userId: user.id };
-}
-
-export async function getStudentBootcamp(): Promise<{
-  bootcampId: number;
-  name: string;
-} | null> {
-  const { user } = await getAuthedUser();
-  if (!user) return null;
-
-  // Service role: students/bootcamps RLS often blocks the user client from
-  // reading their own membership (or joining bootcamps for the name).
-  const admin = createAdminClient();
-  const { data, error } = await admin
-    .from("students")
-    .select("bootcamp_id")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (error) {
-    console.error("getStudentBootcamp error:", error);
-    return null;
-  }
-  if (!data?.bootcamp_id) return null;
-
-  const bootcampId = Number(data.bootcamp_id);
-  if (!Number.isFinite(bootcampId)) return null;
-
-  const { data: bootcamp, error: bootcampError } = await admin
-    .from("bootcamps")
-    .select("id, name")
-    .eq("id", bootcampId)
-    .maybeSingle();
-
-  if (bootcampError || !bootcamp?.name) {
-    console.error("getStudentBootcamp bootcamp error:", bootcampError);
-    return null;
-  }
-
-  return { bootcampId, name: bootcamp.name as string };
-}
-
-export async function getBootcampByJoinCode(code: string): Promise<{
-  id: number;
-  name: string;
-  join_code: string;
-} | null> {
-  const normalized = code.trim().toUpperCase();
-  if (!normalized) return null;
-
-  // Public invite lookup — use service role so guests can see the bootcamp name.
-  const admin = createAdminClient();
-  const { data, error } = await admin
-    .from("bootcamps")
-    .select("id, name, join_code")
-    .ilike("join_code", normalized)
-    .maybeSingle();
-
-  if (error) {
-    console.error("getBootcampByJoinCode error:", error);
-    return null;
-  }
-  if (!data) return null;
-  return {
-    id: Number(data.id),
-    name: data.name as string,
-    join_code: data.join_code as string,
-  };
-}
-
-export async function joinBootcamp(
-  bootcampId: number
-): Promise<{ ok: true } | { ok: false; error: string }> {
-  const { user } = await getAuthedUser();
-  if (!user) return { ok: false, error: "You must sign in first." };
-
-  // Service role: bootcamps/students RLS can block the user client.
-  const admin = createAdminClient();
-  const { data: bootcamp, error: bootcampError } = await admin
-    .from("bootcamps")
-    .select("id")
-    .eq("id", bootcampId)
-    .maybeSingle();
-
-  if (bootcampError || !bootcamp) {
-    return { ok: false, error: "Invalid or expired invite link." };
-  }
-
-  const { data: existing, error: existingError } = await admin
-    .from("students")
-    .select("id, bootcamp_id")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (existingError) {
-    console.error("joinBootcamp lookup error:", existingError);
-    return { ok: false, error: "Could not join bootcamp. Try again." };
-  }
-
-  if (existing) {
-    if (Number(existing.bootcamp_id) === bootcampId) {
-      revalidatePath("/", "layout");
-      revalidatePath("/dashboard");
-      revalidatePath("/assignments");
-      return { ok: true };
-    }
-    const { error: updateError } = await admin
-      .from("students")
-      .update({ bootcamp_id: bootcampId })
-      .eq("id", user.id);
-    if (updateError) {
-      console.error("joinBootcamp update error:", updateError);
-      return { ok: false, error: "Could not join bootcamp. Try again." };
-    }
-  } else {
-    const { error: insertError } = await admin.from("students").insert({
-      id: user.id,
-      bootcamp_id: bootcampId,
-    });
-    if (insertError) {
-      console.error("joinBootcamp insert error:", insertError);
-      return { ok: false, error: "Could not join bootcamp. Try again." };
-    }
-  }
-
-  revalidatePath("/", "layout");
-  revalidatePath("/dashboard");
-  revalidatePath("/assignments");
-  return { ok: true };
-}
-
-export async function listStudentAssignments(): Promise<AssignmentListItem[]> {
-  const membership = await getStudentBootcamp();
-  if (!membership) return [];
-
-  const { user } = await getAuthedUser();
-  if (!user) return [];
-
-  const admin = createAdminClient();
-  // Prefer start_date when present; fall back without it if the column is missing.
-  let rows: {
-    id: string;
-    title: string;
-    due_date: string | null;
-    created_at: string | null;
-    start_date?: string | null;
-  }[] = [];
-
-  const withStart = await admin
-    .from("assignments")
-    .select("id, title, due_date, created_at, start_date")
-    .eq("bootcamp_id", membership.bootcampId)
-    .order("due_date", { ascending: true, nullsFirst: false });
-
-  if (withStart.error) {
-    const withoutStart = await admin
-      .from("assignments")
-      .select("id, title, due_date, created_at")
-      .eq("bootcamp_id", membership.bootcampId)
-      .order("due_date", { ascending: true, nullsFirst: false });
-    if (withoutStart.error) {
-      console.error("listStudentAssignments error:", withoutStart.error);
-      return [];
-    }
-    rows = (withoutStart.data ?? []) as typeof rows;
-  } else {
-    rows = (withStart.data ?? []) as typeof rows;
-  }
-
-  if (rows.length === 0) return [];
-
-  // assignments.id is uuid — do not coerce with Number() (that becomes NaN)
-  const ids = rows.map((a) => String(a.id));
-
-  const { data: aq, error: aqError } = await admin
-    .from("problems")
-    .select("assignment_id, question_id")
-    .in("assignment_id", ids);
-
-  if (aqError) {
-    console.error("listStudentAssignments questions error:", aqError);
-  }
-
-  const { data: progress } = await admin
-    .from("attempts")
-    .select("assignment_id, question_id")
-    .eq("user_id", user.id)
-    .in("assignment_id", ids);
-
-  const countByAssignment = new Map<string, Set<string>>();
-  for (const row of aq ?? []) {
-    const aid = String(row.assignment_id);
-    if (!countByAssignment.has(aid)) countByAssignment.set(aid, new Set());
-    countByAssignment.get(aid)!.add(String(row.question_id));
-  }
-
-  const completedByAssignment = new Map<string, Set<string>>();
-  for (const row of progress ?? []) {
-    const aid = String(row.assignment_id);
-    if (!completedByAssignment.has(aid)) completedByAssignment.set(aid, new Set());
-    completedByAssignment.get(aid)!.add(String(row.question_id));
-  }
-
-  return rows.map((a) => {
-    const id = String(a.id);
-    const questionIds = countByAssignment.get(id) ?? new Set();
-    const completedIds = completedByAssignment.get(id) ?? new Set();
-    let completed = 0;
-    for (const qid of completedIds) {
-      if (questionIds.has(qid)) completed += 1;
-    }
-    const startDate =
-      (a.start_date as string | null | undefined) ??
-      (a.created_at as string | null) ??
-      null;
-    return {
-      id,
-      title: a.title as string,
-      due_date: (a.due_date as string | null) ?? null,
-      created_at: (a.created_at as string | null) ?? null,
-      start_date: startDate,
-      question_count: questionIds.size,
-      completed_count: completed,
-    };
-  });
-}
-
-export async function getAssignmentForPractice(
-  assignmentId: string
-): Promise<AssignmentDetail | null> {
-  const membership = await getStudentBootcamp();
-  if (!membership) return null;
-
-  const { user } = await getAuthedUser();
-  if (!user) return null;
-
-  const admin = createAdminClient();
-  const { data: assignment, error } = await admin
-    .from("assignments")
-    .select("id, title, due_date, bootcamp_id")
-    .eq("id", assignmentId)
-    .eq("bootcamp_id", membership.bootcampId)
-    .maybeSingle();
-
-  if (error || !assignment) {
-    console.error("getAssignmentForPractice error:", error);
-    return null;
-  }
-
-  const { data: links, error: linkError } = await admin
-    .from("problems")
-    .select("question_id")
-    .eq("assignment_id", assignmentId);
-
-  if (linkError) {
-    console.error("getAssignmentForPractice links error:", linkError);
-    return null;
-  }
-
-  const questionIds = (links ?? [])
-    .map((r) => r.question_id as string)
-    .filter(Boolean);
-  if (questionIds.length === 0) {
-    return {
-      id: String(assignment.id),
-      title: assignment.title as string,
-      due_date: (assignment.due_date as string | null) ?? null,
-      bootcamp_id: Number(assignment.bootcamp_id),
-      questions: [],
-      progress: [],
-    };
-  }
-
-  const { data: questions, error: qError } = await admin
-    .from("questions")
-    .select(QUESTION_SELECT)
-    .in("question_id", questionIds);
-
-  if (qError) {
-    console.error("getAssignmentForPractice questions error:", qError);
-    return null;
-  }
-
-  const byId = new Map(
-    (questions ?? []).map((q) => [
-      q.question_id as string,
-      normalizeQuestion(q as Record<string, unknown>),
-    ])
-  );
-  const ordered = questionIds
-    .map((id) => byId.get(id))
-    .filter((q): q is Question => Boolean(q));
-
-  // Restore prior progress for this student on this assignment (from attempts)
-  type ProgressRow = {
-    question_id: string;
-    is_correct: boolean | null;
-    selected_answer?: string | null;
-    attempted_at?: string | null;
-  };
-  const { data: attemptRows, error: progressError } = await admin
-    .from("attempts")
-    .select("question_id, is_correct, selected_answer, attempted_at")
-    .eq("assignment_id", assignmentId)
-    .eq("user_id", user.id)
-    .order("attempted_at", { ascending: false });
-
-  if (progressError) {
-    console.error("getAssignmentForPractice progress error:", progressError);
-  }
-
-  // Keep latest attempt per question
-  const latestByQuestion = new Map<string, ProgressRow>();
-  for (const row of (attemptRows ?? []) as ProgressRow[]) {
-    const qid = row.question_id;
-    if (!qid || latestByQuestion.has(qid)) continue;
-    latestByQuestion.set(qid, row);
-  }
-
-  const progress: AssignmentProgressEntry[] = [...latestByQuestion.values()]
-    .filter((row) => row.is_correct === true || row.is_correct === false)
-    .map((row) => ({
-      question_id: row.question_id,
-      is_correct: Boolean(row.is_correct),
-      selected_answer: (row.selected_answer as string | null) ?? null,
-    }));
-
-  return {
-    id: String(assignment.id),
-    title: assignment.title as string,
-    due_date: (assignment.due_date as string | null) ?? null,
-    bootcamp_id: Number(assignment.bootcamp_id),
-    questions: ordered,
-    progress,
-  };
-}
-
-export async function submitAssignmentProgress(params: {
-  assignmentId: string;
-  questionId: string;
-  isCorrect: boolean;
-  selectedAnswer?: string;
-  timeSpentSec?: number;
-}): Promise<void> {
-  const { user } = await getAuthedUser();
-  if (!user) throw new Error("Not signed in");
-
-  const membership = await getStudentBootcamp();
-  if (!membership) throw new Error("Not in a bootcamp");
-
-  const admin = createAdminClient();
-  const { data: assignment } = await admin
-    .from("assignments")
-    .select("id")
-    .eq("id", params.assignmentId)
-    .eq("bootcamp_id", membership.bootcampId)
-    .maybeSingle();
-
-  if (!assignment) throw new Error("Assignment not found");
-
-  const payload: Record<string, unknown> = {
-    user_id: user.id,
-    question_id: params.questionId,
-    is_correct: params.isCorrect,
-    assignment_id: params.assignmentId,
-    selected_answer: params.selectedAnswer ?? null,
-    time_spent_sec: params.timeSpentSec ?? null,
-    attempted_at: new Date().toISOString(),
-  };
-
-  const { error } = await admin.from("attempts").insert(payload);
-  if (error) {
-    console.error("submitAssignmentProgress insert error:", error);
-    throw new Error("Could not save assignment progress");
-  }
-
-  revalidatePath("/assignments");
-  revalidatePath(`/assignments/${params.assignmentId}`);
-}
-
 async function ensureTutorForAdmin(userId: string): Promise<string> {
   const admin = createAdminClient();
   const { data: existing } = await admin
@@ -561,6 +37,7 @@ async function ensureTutorForAdmin(userId: string): Promise<string> {
     .select("id")
     .eq("id", userId)
     .maybeSingle();
+
   if (existing?.id) return existing.id as string;
 
   const { error } = await admin.from("tutors").insert({ id: userId });
@@ -568,6 +45,7 @@ async function ensureTutorForAdmin(userId: string): Promise<string> {
     console.error("ensureTutorForAdmin error:", error);
     throw new Error("Could not create tutor profile");
   }
+
   return userId;
 }
 
@@ -584,13 +62,13 @@ export async function listAdminBootcamps(): Promise<BootcampSummary[]> {
     return [];
   }
 
-  return (data ?? []).map((b) => ({
-    id: Number(b.id),
-    name: b.name as string,
-    join_code: b.join_code as string,
-    start_date: (b.start_date as string | null) ?? null,
-    end_date: (b.end_date as string | null) ?? null,
-    created_at: (b.created_at as string | null) ?? null,
+  return (data ?? []).map((bootcamp) => ({
+    id: Number(bootcamp.id),
+    name: bootcamp.name as string,
+    join_code: bootcamp.join_code as string,
+    start_date: (bootcamp.start_date as string | null) ?? null,
+    end_date: (bootcamp.end_date as string | null) ?? null,
+    created_at: (bootcamp.created_at as string | null) ?? null,
   }));
 }
 
@@ -629,6 +107,7 @@ export async function createBootcamp(params: {
     }
 
     revalidatePath("/admin");
+    revalidatePath("/admin/bootcamps");
     return {
       ok: true,
       bootcamp: {
@@ -640,12 +119,17 @@ export async function createBootcamp(params: {
         created_at: (data.created_at as string | null) ?? null,
       },
     };
-  } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Forbidden" };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Forbidden",
+    };
   }
 }
 
-export async function getAdminBootcamp(bootcampId: number): Promise<BootcampSummary | null> {
+export async function getAdminBootcamp(
+  bootcampId: number
+): Promise<BootcampSummary | null> {
   await requireAdmin();
   const admin = createAdminClient();
   const { data, error } = await admin
@@ -653,7 +137,9 @@ export async function getAdminBootcamp(bootcampId: number): Promise<BootcampSumm
     .select("id, name, join_code, start_date, end_date, created_at")
     .eq("id", bootcampId)
     .maybeSingle();
+
   if (error || !data) return null;
+
   return {
     id: Number(data.id),
     name: data.name as string,
@@ -682,12 +168,19 @@ export async function listAdminAssignments(
 
   const rows = assignments ?? [];
   if (rows.length === 0) return [];
-  const ids = rows.map((a) => String(a.id));
+  const ids = rows.map((assignment) => String(assignment.id));
 
-  const { data: aq } = await admin
+  const { data: aq, error: aqError } = await admin
     .from("problems")
     .select("assignment_id, question_id")
     .in("assignment_id", ids);
+
+  if (aqError) {
+    console.error("listAdminAssignments questions error:", aqError);
+    throw new Error(
+      `Could not load assignment questions: ${aqError.message || "unknown error"}`
+    );
+  }
 
   const countByAssignment = new Map<string, number>();
   for (const row of aq ?? []) {
@@ -695,14 +188,14 @@ export async function listAdminAssignments(
     countByAssignment.set(aid, (countByAssignment.get(aid) ?? 0) + 1);
   }
 
-  return rows.map((a) => {
-    const id = String(a.id);
+  return rows.map((assignment) => {
+    const id = String(assignment.id);
     return {
       id,
-      title: a.title as string,
-      due_date: (a.due_date as string | null) ?? null,
-      created_at: (a.created_at as string | null) ?? null,
-      start_date: (a.created_at as string | null) ?? null,
+      title: assignment.title as string,
+      due_date: (assignment.due_date as string | null) ?? null,
+      created_at: (assignment.created_at as string | null) ?? null,
+      start_date: (assignment.created_at as string | null) ?? null,
       question_count: countByAssignment.get(id) ?? 0,
       completed_count: 0,
     };
@@ -749,7 +242,9 @@ export async function createAssignment(params: {
     }
 
     const assignmentId = String(assignment.id);
-    const uniqueIds = [...new Set(params.questionIds.map((id) => id.trim()).filter(Boolean))];
+    const uniqueIds = [
+      ...new Set(params.questionIds.map((id) => id.trim()).filter(Boolean)),
+    ];
     const { error: linkError } = await admin.from("problems").insert(
       uniqueIds.map((question_id) => ({
         assignment_id: assignmentId,
@@ -765,18 +260,13 @@ export async function createAssignment(params: {
     revalidatePath(`/admin/bootcamps/${params.bootcampId}`);
     revalidatePath("/assignments");
     return { ok: true, assignmentId };
-  } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Forbidden" };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Forbidden",
+    };
   }
 }
-
-export type BankQuestionOption = {
-  question_id: string;
-  domain: string | null;
-  skill: string | null;
-  tier: number | null;
-  stem: string;
-};
 
 export async function listQuestionsForPicker(params: {
   subject?: SubjectFilter;
@@ -807,12 +297,12 @@ export async function listQuestionsForPicker(params: {
     return [];
   }
 
-  return (data ?? []).map((q: Record<string, unknown>) => ({
-    question_id: q.question_id as string,
-    domain: (q.domain as string | null) ?? null,
-    skill: (q.skill as string | null) ?? null,
-    tier: q.tier == null ? null : Number(q.tier),
-    stem: (q.stem as string) ?? "",
+  return (data ?? []).map((question: Record<string, unknown>) => ({
+    question_id: question.question_id as string,
+    domain: (question.domain as string | null) ?? null,
+    skill: (question.skill as string | null) ?? null,
+    tier: question.tier == null ? null : Number(question.tier),
+    stem: (question.stem as string) ?? "",
   }));
 }
 
@@ -839,7 +329,7 @@ export async function getBootcampRoster(
     .order("created_at", { ascending: true });
 
   const assignmentRows = assignments ?? [];
-  const assignmentIds = assignmentRows.map((a) => String(a.id));
+  const assignmentIds = assignmentRows.map((assignment) => String(assignment.id));
 
   const { data: aq } = assignmentIds.length
     ? await admin
@@ -855,7 +345,7 @@ export async function getBootcampRoster(
     totals.get(aid)!.add(row.question_id as string);
   }
 
-  const studentIds = (students ?? []).map((s) => s.id as string);
+  const studentIds = (students ?? []).map((student) => student.id as string);
   const { data: progress } =
     studentIds.length && assignmentIds.length
       ? await admin
@@ -872,29 +362,31 @@ export async function getBootcampRoster(
     completed.get(key)!.add(row.question_id as string);
   }
 
-  return (students ?? []).map((s) => {
-    const profile = s.profiles as
+  return (students ?? []).map((student) => {
+    const profile = student.profiles as
       | { full_name: string | null; email: string | null }
       | { full_name: string | null; email: string | null }[]
       | null;
     const p = Array.isArray(profile) ? profile[0] : profile;
-    const studentId = s.id as string;
+    const studentId = student.id as string;
 
     return {
       student_id: studentId,
       full_name: p?.full_name ?? null,
       email: p?.email ?? null,
-      progress: assignmentRows.map((a) => {
-        const aid = String(a.id);
+      progress: assignmentRows.map((assignment) => {
+        const aid = String(assignment.id);
         const totalSet = totals.get(aid) ?? new Set();
         const doneSet = completed.get(`${studentId}:${aid}`) ?? new Set();
         let done = 0;
+
         for (const qid of doneSet) {
           if (totalSet.has(qid)) done += 1;
         }
+
         return {
           assignment_id: aid,
-          title: a.title as string,
+          title: assignment.title as string,
           completed: done,
           total: totalSet.size,
         };
@@ -946,7 +438,7 @@ export async function getAdminStudentBootcampDetail(
     .order("created_at", { ascending: true });
 
   const assignmentRows = assignments ?? [];
-  const assignmentIds = assignmentRows.map((a) => String(a.id));
+  const assignmentIds = assignmentRows.map((assignment) => String(assignment.id));
 
   const { data: aq } = assignmentIds.length
     ? await admin
@@ -959,7 +451,9 @@ export async function getAdminStudentBootcampDetail(
   for (const row of aq ?? []) {
     const aid = String(row.assignment_id);
     const qid = row.question_id as string;
-    if (!questionsByAssignment.has(aid)) questionsByAssignment.set(aid, new Set());
+    if (!questionsByAssignment.has(aid)) {
+      questionsByAssignment.set(aid, new Set());
+    }
     questionsByAssignment.get(aid)!.add(qid);
   }
 
@@ -986,7 +480,6 @@ export async function getAdminStudentBootcampDetail(
         progressError
       );
     } else {
-      // Latest attempt per assignment+question
       const seen = new Set<string>();
       for (const row of attemptRows ?? []) {
         const aid = String(row.assignment_id);
@@ -1071,8 +564,8 @@ export async function getAdminStudentBootcampDetail(
   }
 
   const assignmentDetails: AdminStudentAssignmentDetail[] = assignmentRows.map(
-    (a) => {
-      const aid = String(a.id);
+    (assignment) => {
+      const aid = String(assignment.id);
       const qids = questionsByAssignment.get(aid) ?? new Set<string>();
       const prog = progressByAssignment.get(aid) ?? new Map();
 
@@ -1084,17 +577,18 @@ export async function getAdminStudentBootcampDetail(
         const entry = prog.get(qid);
         if (!entry) continue;
         completed += 1;
+
         if (entry.is_correct === true) {
           correct += 1;
         } else if (entry.is_correct === false) {
-          const q = questionMap.get(qid);
+          const question = questionMap.get(qid);
           incorrect.push({
             question_id: qid,
-            domain: q?.domain ?? null,
-            skill: q?.skill ?? null,
-            stem: q?.stem ?? "",
-            choices: q?.choices ?? null,
-            correct_answer: q?.correct_answer ?? "",
+            domain: question?.domain ?? null,
+            skill: question?.skill ?? null,
+            stem: question?.stem ?? "",
+            choices: question?.choices ?? null,
+            correct_answer: question?.correct_answer ?? "",
             selected_answer:
               entry.selected_answer ?? selectedByQuestion.get(qid) ?? null,
           });
@@ -1103,8 +597,8 @@ export async function getAdminStudentBootcampDetail(
 
       return {
         assignment_id: aid,
-        title: a.title as string,
-        due_date: (a.due_date as string | null) ?? null,
+        title: assignment.title as string,
+        due_date: (assignment.due_date as string | null) ?? null,
         total: qids.size,
         completed,
         correct,
@@ -1124,35 +618,6 @@ export async function getAdminStudentBootcampDetail(
     assignments: assignmentDetails,
   };
 }
-
-export type AdminActiveSubscription = {
-  id: string;
-  student_name: string | null;
-  student_email: string | null;
-  plan: string;
-  monthly_price: number;
-  started_at: string | null;
-};
-
-export type AdminBusinessMetrics = {
-  activeSubscribers: number;
-  mrr: number;
-  newThisMonth: number;
-  canceledThisMonth: number;
-  activeSubscriptions: AdminActiveSubscription[];
-};
-
-export type AdminEngagementMetrics = {
-  questionsAnsweredThisWeek: number;
-  accuracyThisWeekPercent: number | null;
-  activeStudentsThisWeek: number;
-  assignmentCompletionRatePercent: number | null;
-};
-
-export type AdminMetrics = {
-  business: AdminBusinessMetrics;
-  engagement: AdminEngagementMetrics;
-};
 
 function startOfUtcMonth(d: Date): Date {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1));
@@ -1243,10 +708,11 @@ export async function getAdminMetrics(): Promise<AdminMetrics> {
   const studentIdsForProfiles = [
     ...new Set(
       activeRows
-        .map((r) => r.student_id as string | null)
+        .map((row) => row.student_id as string | null)
         .filter((id): id is string => Boolean(id))
     ),
   ];
+
   const profileByStudent = new Map<
     string,
     { full_name: string | null; email: string | null }
@@ -1259,10 +725,10 @@ export async function getAdminMetrics(): Promise<AdminMetrics> {
     if (profileError) {
       console.error("getAdminMetrics profiles error:", profileError);
     } else {
-      for (const p of profileRows ?? []) {
-        profileByStudent.set(p.id as string, {
-          full_name: (p.full_name as string | null) ?? null,
-          email: (p.email as string | null) ?? null,
+      for (const profile of profileRows ?? []) {
+        profileByStudent.set(profile.id as string, {
+          full_name: (profile.full_name as string | null) ?? null,
+          email: (profile.email as string | null) ?? null,
         });
       }
     }
@@ -1287,20 +753,20 @@ export async function getAdminMetrics(): Promise<AdminMetrics> {
   const questionsAnsweredThisWeek = weekAttempts.length;
   let correctCount = 0;
   const activeUserIds = new Set<string>();
-  for (const a of weekAttempts) {
-    if (a.is_correct) correctCount += 1;
-    if (a.user_id) activeUserIds.add(a.user_id as string);
+  for (const attempt of weekAttempts) {
+    if (attempt.is_correct) correctCount += 1;
+    if (attempt.user_id) activeUserIds.add(attempt.user_id as string);
   }
 
-  // Assignment completion for this calendar week's bootcamp assignments.
   const bootcampStudents = bootcampStudentsResult.data ?? [];
   const bootcampIds = [
     ...new Set(
       bootcampStudents
-        .map((s) => s.bootcamp_id as number | null)
-        .filter((id): id is number => id != null)
+        .map((student) => Number(student.bootcamp_id))
+        .filter((id) => Number.isFinite(id))
     ),
-  ];
+  ] as number[];
+
   let assignmentCompletionRatePercent: number | null = null;
 
   if (bootcampIds.length && bootcampStudents.length) {
@@ -1316,16 +782,20 @@ export async function getAdminMetrics(): Promise<AdminMetrics> {
         if (!iso) return false;
         return iso >= weekStart && iso < weekEnd;
       };
+
       const thisWeekAssignments = (weekAssignments ?? []).filter(
-        (a) =>
-          inWeek((a.due_date as string | null) ?? null) ||
-          inWeek((a.created_at as string | null) ?? null)
+        (assignment) =>
+          inWeek((assignment.due_date as string | null) ?? null) ||
+          inWeek((assignment.created_at as string | null) ?? null)
       );
-      const weekAssignmentIds = thisWeekAssignments.map((a) => String(a.id));
+
+      const weekAssignmentIds = thisWeekAssignments.map((assignment) =>
+        String(assignment.id)
+      );
       const assignmentsByBootcamp = new Map<number, string[]>();
-      for (const a of thisWeekAssignments) {
-        const bid = Number(a.bootcamp_id);
-        const aid = String(a.id);
+      for (const assignment of thisWeekAssignments) {
+        const bid = Number(assignment.bootcamp_id);
+        const aid = String(assignment.id);
         if (!assignmentsByBootcamp.has(bid)) assignmentsByBootcamp.set(bid, []);
         assignmentsByBootcamp.get(bid)!.push(aid);
       }
@@ -1345,7 +815,7 @@ export async function getAdminMetrics(): Promise<AdminMetrics> {
           questionsByAssignment.get(aid)!.add(row.question_id as string);
         }
 
-        const studentIds = bootcampStudents.map((s) => s.id as string);
+        const studentIds = bootcampStudents.map((student) => student.id as string);
         const { data: progress } = await admin
           .from("attempts")
           .select("assignment_id, user_id, question_id")
@@ -1366,6 +836,7 @@ export async function getAdminMetrics(): Promise<AdminMetrics> {
           const aids = assignmentsByBootcamp.get(bid) ?? [];
           let assigned = 0;
           let done = 0;
+
           for (const aid of aids) {
             const qids = questionsByAssignment.get(aid) ?? new Set();
             assigned += qids.size;
@@ -1374,11 +845,12 @@ export async function getAdminMetrics(): Promise<AdminMetrics> {
               if (qids.has(qid)) done += 1;
             }
           }
+
           if (assigned > 0) rates.push(done / assigned);
         }
 
         if (rates.length) {
-          const avg = rates.reduce((sum, r) => sum + r, 0) / rates.length;
+          const avg = rates.reduce((sum, rate) => sum + rate, 0) / rates.length;
           assignmentCompletionRatePercent = Math.round(avg * 100);
         }
       }
@@ -1404,4 +876,3 @@ export async function getAdminMetrics(): Promise<AdminMetrics> {
     },
   };
 }
-

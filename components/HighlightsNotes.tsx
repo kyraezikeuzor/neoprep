@@ -50,13 +50,13 @@ export function HighlightsNotesButton({
       className={`relative inline-flex flex-col items-center gap-0.5 rounded-lg px-2 py-1.5 transition ${
         open
           ? "bg-[#F3F4F6] text-arc-ink"
-          : "text-[#6B7280] hover:bg-[#F3F4F6] hover:text-arc-ink"
+          : "text-[#6B7280] hover:bg-arc-soft hover:text-arc-ink"
       }`}
     >
       <span className="relative">
         <HighlightsNotesIcon />
         {count > 0 && (
-          <span className="absolute -right-1 -top-1 flex h-3.5 min-w-[0.875rem] items-center justify-center rounded-full bg-[#007AFF] px-0.5 text-[9px] font-semibold leading-none text-white">
+          <span className="absolute -right-1 -top-1 flex h-3.5 min-w-[0.875rem] items-center justify-center rounded-full bg-arc-accent px-0.5 text-[9px] font-semibold leading-none text-white">
             {count}
           </span>
         )}
@@ -96,7 +96,7 @@ export default function HighlightsNotesPanel({
             type="button"
             onClick={onClose}
             aria-label="Close highlights & notes"
-            className="rounded-md p-1.5 text-arc-muted transition hover:bg-[#F3F4F6] hover:text-arc-ink"
+            className="rounded-md p-1.5 text-arc-muted transition hover:bg-arc-soft hover:text-arc-ink"
           >
             <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
               <path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" />
@@ -123,7 +123,7 @@ export default function HighlightsNotesPanel({
                       type="button"
                       onClick={() => onRemove(h.id)}
                       aria-label="Remove highlight"
-                      className="shrink-0 rounded-md p-1 text-arc-muted transition hover:bg-[#F3F4F6] hover:text-arc-ink"
+                      className="shrink-0 rounded-md p-1 text-arc-muted transition hover:bg-arc-soft hover:text-arc-ink"
                     >
                       <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
                         <path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" />
@@ -135,7 +135,7 @@ export default function HighlightsNotesPanel({
                     onChange={(e) => onUpdateNote(h.id, e.target.value)}
                     placeholder="Add a note..."
                     rows={2}
-                    className="w-full resize-none rounded-md border border-arc-line px-2.5 py-1.5 text-sm text-arc-ink outline-none transition focus:border-[#007AFF]"
+                    className="w-full resize-none rounded-md border border-arc-line px-2.5 py-1.5 text-sm text-arc-ink outline-none transition focus:border-arc-accent"
                   />
                 </div>
               ))}

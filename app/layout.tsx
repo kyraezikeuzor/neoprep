@@ -4,7 +4,7 @@ import NextTopLoader from "nextjs-toploader";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Tutormigo",
+  title: "NeoPrep",
   description: "Get better at the SAT, one question at a time.",
 };
 
@@ -45,7 +45,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="h-full font-sans">
         <NextTopLoader
-          color="#5AC8FA"
+          color="#60A5FA"
           height={4}
           showSpinner={false}
           shadow={false}

@@ -1,7 +1,7 @@
 "use client";
 
 import MathText from "@/components/MathText";
-import type { AdminStudentIncorrectQuestion } from "@/app/bootcamp-actions";
+import type { AdminStudentIncorrectQuestion } from "@/app/actions/bootcamp";
 
 function formatAnswerDisplay(
   answer: string | null,
@@ -23,7 +23,7 @@ export default function StudentIncorrectQuestion({
   const tag = [item.domain, item.skill].filter(Boolean).join(" · ") || "Untagged";
 
   return (
-    <details className="group rounded-xl border border-[#E5E7EB] bg-white open:border-[#D1D5DB]">
+    <details className="group rounded-xl border border-arc-line bg-white open:border-[#D1D5DB]">
       <summary className="cursor-pointer list-none px-4 py-3 font-sans text-sm marker:content-none [&::-webkit-details-marker]:hidden">
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -40,9 +40,9 @@ export default function StudentIncorrectQuestion({
           </span>
         </div>
       </summary>
-      <div className="space-y-3 border-t border-[#E5E7EB] px-4 py-3">
+      <div className="space-y-3 border-t border-arc-line px-4 py-3">
         <div>
-          <p className="font-sans text-xs font-medium uppercase tracking-wide text-arc-muted">
+          <p className="arc-card-label">
             Question
           </p>
           <div className="mt-1 font-sans text-sm text-arc-ink">
@@ -51,7 +51,7 @@ export default function StudentIncorrectQuestion({
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
-            <p className="font-sans text-xs font-medium uppercase tracking-wide text-arc-muted">
+            <p className="arc-card-label">
               Student answer
             </p>
             <div className="mt-1 font-sans text-sm text-red-700">
@@ -61,7 +61,7 @@ export default function StudentIncorrectQuestion({
             </div>
           </div>
           <div>
-            <p className="font-sans text-xs font-medium uppercase tracking-wide text-arc-muted">
+            <p className="arc-card-label">
               Correct answer
             </p>
             <div className="mt-1 font-sans text-sm text-emerald-700">

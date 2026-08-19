@@ -13,7 +13,7 @@ function tierTileClass(tier: number | null | undefined): string {
   if (tier === 1) return "bg-[#F8E7A0] text-[#5C4E12]";
   if (tier === 2) return "bg-[#F5C7A9] text-[#6B3F1D]";
   if (tier === 3) return "bg-[#EFA3A3] text-[#6B2424]";
-  return "bg-[#E8E8E6] text-[#3F3F46]";
+  return "bg-[#E8E8E6] text-arc-ink";
 }
 
 function CorrectBadge() {
@@ -184,7 +184,7 @@ export default function SessionQuestionNavigator({
           </span>
         </div>
 
-        <div className="grid max-h-[50vh] grid-cols-6 gap-2.5 overflow-y-auto p-1">
+        <div className="grid max-h-[50vh] grid-cols-4 gap-2 overflow-y-auto p-1 sm:grid-cols-6 sm:gap-2.5">
           {tiles.map(({ index, question }) => {
             const result = question ? results[question.question_id] : undefined;
             const forReview = question

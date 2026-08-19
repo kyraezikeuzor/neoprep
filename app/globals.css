@@ -13,8 +13,41 @@ body {
 }
 
 body {
-  background: #FAFAF9;
-  color: #161616;
+  background: #FFFFFF;
+  color: #18181B;
+}
+
+@layer components {
+  .arc-card {
+    @apply rounded-2xl border-2 border-arc-line bg-white;
+    color: #3f3f46;
+  }
+
+  .arc-card-label {
+    @apply font-sans text-sm font-normal;
+    color: #8f8f98;
+  }
+
+  .arc-card-hint {
+    @apply font-sans text-sm font-normal;
+    color: #8f8f98;
+  }
+
+  .arc-btn-primary {
+    @apply inline-flex items-center justify-center rounded-xl bg-arc-accent px-5 py-2.5 font-sans text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .arc-btn-primary:hover {
+    background-color: #1d4ed8;
+  }
+
+  .arc-btn-secondary {
+    @apply inline-flex items-center justify-center rounded-xl border border-arc-line bg-white px-5 py-2.5 font-sans text-sm font-semibold text-arc-ink transition disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .arc-btn-secondary:hover {
+    background-color: #f4f4f5;
+  }
 }
 
 /* Landing page — DM Sans for chrome/headings; Inter for body + FAQs */
@@ -71,8 +104,59 @@ body {
   font-weight: 350;
 }
 
+/* The Playground hook is a social cover, so its stem is intentionally poster-sized.
+   Keep this isolated from the SAT practice and reveal interfaces. */
+.playground-hook-stem,
+.playground-hook-stem .math-text {
+  font-family: "Inter", system-ui, sans-serif !important;
+  font-size: clamp(1.1rem, 3.2cqw, 1.75rem) !important;
+  font-weight: 400 !important;
+  line-height: 1.48 !important;
+}
+
+.playground-hook-equation,
+.playground-hook-equation .math-text {
+  font-family: "Inter", system-ui, sans-serif !important;
+  font-size: clamp(1.35rem, 4cqw, 2.2rem) !important;
+  font-weight: 450 !important;
+  line-height: 1.3 !important;
+  color: #17171b !important;
+}
+
+.playground-hook-prompt,
+.playground-hook-prompt .math-text {
+  font-family: "Inter", system-ui, sans-serif !important;
+  font-size: clamp(1.15rem, 3.4cqw, 1.9rem) !important;
+  font-weight: 500 !important;
+  line-height: 1.42 !important;
+  color: #17171b !important;
+}
+
+.explainer-preview-card .playground-sat-stem,
+.explainer-preview-card .playground-sat-stem .math-text {
+  font-family: "Noto Serif", "Noto Serif Fallback", Georgia, serif !important;
+  font-size: clamp(1.1rem, 3.25cqw, 1.8rem) !important;
+  font-weight: 350 !important;
+  line-height: 1.55 !important;
+  color: #121214 !important;
+}
+
+.playground-hook-choice,
+.playground-hook-choice .math-text {
+  font-family: "Inter", system-ui, sans-serif !important;
+  font-size: clamp(0.95rem, 2.8cqw, 1.3rem) !important;
+  line-height: 1.35 !important;
+  font-weight: 500 !important;
+}
+
+.explainer-preview-card .question-prose,
+.explainer-preview-card .question-prose .math-text {
+  font-family: "Inter", system-ui, sans-serif !important;
+  color: #17171b;
+}
+
 :focus-visible {
-  outline: 2px solid #007AFF;
+  outline: 2px solid #2563EB;
   outline-offset: 2px;
 }
 

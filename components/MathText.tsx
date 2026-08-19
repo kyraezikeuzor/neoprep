@@ -13,18 +13,44 @@ declare global {
   }
 }
 
-/** Renders text that may contain LaTeX via MathJax. Accepts \(...\) / \[...\]
- * delimiters, and also ASCII caret math (kx^2) which is converted first. */
-export default function MathText({
-  text,
-  className,
-  block = false,
-}: {
+type MathTextProps = {
   text: string;
   className?: string;
   /** Force block layout (e.g. explanation sentences on their own lines). */
   block?: boolean;
-}) {
+};
+
+function splitResearchNotes(text: string): {
+  introduction: string;
+  notes: string[];
+  instruction: string | null;
+} | null {
+  const match = text.match(/^([\s\S]*?following notes:\s*)•\s+([\s\S]+)$/i);
+  if (!match) return null;
+
+  const parts = match[2]
+    .split(/\s*•\s*/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (parts.length < 2) return null;
+
+  const lastIndex = parts.length - 1;
+  const last = parts[lastIndex]!;
+  const instructionMatch = last.match(
+    /^([\s\S]*?)(?=\s+(?:The student|The writer|The researcher)\s+wants\s+to\b)([\s\S]+)$/i
+  );
+  const instruction = instructionMatch?.[2]?.trim() ?? null;
+  parts[lastIndex] = (instructionMatch?.[1] ?? last).trim();
+
+  return {
+    introduction: match[1].trim(),
+    notes: parts.filter(Boolean),
+    instruction,
+  };
+}
+
+/** The raw MathJax node. Keep this separate so list detection never changes hook order. */
+function MathTextRaw({ text, className, block = false }: MathTextProps) {
   const ref = useRef<HTMLDivElement>(null);
   const prepared = prepareForMathJax(text);
   const hasDisplay = prepared.includes("\\[");
@@ -70,5 +96,26 @@ export default function MathText({
       className={`math-text${isBlock ? " math-text--display" : ""} ${className ?? ""}`.trim()}
       style={{ display: isBlock ? "block" : "inline" }}
     />
+  );
+}
+
+/** Renders text that may contain LaTeX via MathJax. Accepts \(...\) / \[...\]
+ * delimiters, and also ASCII caret math (kx^2) which is converted first. */
+export default function MathText(props: MathTextProps) {
+  const researchNotes = splitResearchNotes(props.text);
+  if (!researchNotes) return <MathTextRaw {...props} />;
+
+  return (
+    <div className={props.className}>
+      <MathTextRaw text={researchNotes.introduction} />
+      <ul className="my-3 list-disc space-y-1.5 pl-6 marker:text-arc-ink">
+        {researchNotes.notes.map((note, index) => (
+          <li key={`${index}-${note.slice(0, 24)}`} className="pl-1">
+            <MathTextRaw text={note} />
+          </li>
+        ))}
+      </ul>
+      {researchNotes.instruction ? <MathTextRaw text={researchNotes.instruction} /> : null}
+    </div>
   );
 }

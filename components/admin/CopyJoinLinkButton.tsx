@@ -28,7 +28,7 @@ export default function CopyJoinLinkButton({ joinCode }: { joinCode: string }) {
       <button
         type="button"
         onClick={copy}
-        className="rounded-full border-2 border-[#E5E7EB] bg-white px-4 py-2 font-sans text-sm font-semibold text-arc-ink transition hover:bg-[#F7F7F7]"
+        className="arc-btn-secondary"
       >
         {copied ? "Copied" : "Copy link"}
       </button>

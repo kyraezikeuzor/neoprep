@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import {
   getBankOverview,
+  getBookmarkedQuestionIds,
+  getDashboardShellStats,
   getQuestionById,
   getRandomQuestion,
-  getSkillProgress,
 } from "@/app/actions";
 import QuestionBankLanding from "@/components/QuestionBankLanding";
 import QuestionCard from "@/components/QuestionCard";
@@ -19,6 +20,12 @@ function parseTier(value: string | undefined): TierFilter {
   return "all";
 }
 
+function parseCount(value: string | undefined): number {
+  const n = Number(value);
+  if (n === 10 || n === 20 || n === 30) return n;
+  return 10;
+}
+
 export async function generateMetadata({
   searchParams,
 }: {
@@ -30,7 +37,7 @@ export async function generateMetadata({
   const inPractice =
     searchParams?.practice === "1" || Boolean(searchParams?.question?.trim());
   return {
-    title: inPractice ? "Practice · Tutormigo" : "Question Bank · Tutormigo",
+    title: inPractice ? "Practice · NeoPrep" : "Question Bank · NeoPrep",
   };
 }
 
@@ -42,29 +49,34 @@ export default async function QuestionBankPage({
     practice?: string;
     subject?: string;
     tier?: string;
+    count?: string;
   };
 }) {
   const inPractice =
     searchParams?.practice === "1" || Boolean(searchParams?.question?.trim());
 
   if (!inPractice) {
-    const [overview, skillProgress] = await Promise.all([
+    const [overview, stats] = await Promise.all([
       getBankOverview(),
-      getSkillProgress(),
+      getDashboardShellStats(),
     ]);
     return (
-      <QuestionBankLanding overview={overview} skillProgress={skillProgress} />
+      <QuestionBankLanding overview={overview} streak={stats.streak} />
     );
   }
 
   const subject = parseSubject(searchParams?.subject);
   const tier = parseTier(searchParams?.tier);
+  const count = parseCount(searchParams?.count);
   const requestedId = searchParams?.question?.trim();
 
-  const question = requestedId
-    ? (await getQuestionById(requestedId)) ??
-      (await getRandomQuestion({ subject, tier }))
-    : await getRandomQuestion({ subject, tier });
+  const [question, bookmarkedIds] = await Promise.all([
+    requestedId
+      ? (await getQuestionById(requestedId)) ??
+        (await getRandomQuestion({ subject, tier }))
+      : getRandomQuestion({ subject, tier }),
+    getBookmarkedQuestionIds(),
+  ]);
 
   return (
     <div className="h-full min-h-0">
@@ -72,7 +84,8 @@ export default async function QuestionBankPage({
         initialQuestion={question}
         initialSubject={subject}
         initialTier={tier}
-        sessionLength={5}
+        sessionLength={count}
+        initialBookmarkedIds={bookmarkedIds}
       />
     </div>
   );

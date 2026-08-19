@@ -39,19 +39,19 @@ const FAQS: { q: string; a: string }[] = [
   },
   {
     q: "What do I get as a platform participant?",
-    a: "One week of live SAT instruction (two hours of group teaching), access to 1,000 original SAT practice questions with explanations, the Tutormigo Discord community, and full platform access for the platform period.",
+    a: "One week of live SAT instruction (two hours of group teaching), access to 1,000 original SAT practice questions with explanations, the NeoPrep Discord community, and full platform access for the platform period.",
   },
   {
     q: "What are platform participants expected to do?",
-    a: "Practice regularly, attend the live session when you can, report bugs or confusing questions, share honest feedback, and complete occasional short surveys. Your input helps us improve Tutormigo before public launch.",
+    a: "Practice regularly, attend the live session when you can, report bugs or confusing questions, share honest feedback, and complete occasional short surveys. Your input helps us improve NeoPrep before public launch.",
   },
   {
     q: "Are these official College Board questions?",
-    a: "No. Tutormigo’s bank is 1,000 original questions designed to reflect the format, skills, and difficulty of the SAT — not official College Board material.",
+    a: "No. NeoPrep’s bank is 1,000 original questions designed to reflect the format, skills, and difficulty of the SAT — not official College Board material.",
   },
   {
     q: "What happens when the platform period ends?",
-    a: "Tutormigo may transition to a paid program later. Participation does not obligate you to purchase anything. We’ll share future pricing and terms before anyone is asked to pay.",
+    a: "NeoPrep may transition to a paid program later. Participation does not obligate you to purchase anything. We’ll share future pricing and terms before anyone is asked to pay.",
   },
 ];
 
@@ -74,7 +74,7 @@ const STEPS = [
 ] as const;
 
 /** Shared landing tokens — sleek flat gray, no shadows */
-const ink = "text-[#3F3F46]";
+const ink = "text-arc-ink";
 const muted = "text-[#71717A]";
 const border = "border-2 border-[#E5E5E5]";
 const softBlue = "bg-[#EEF3F8]";
@@ -115,14 +115,14 @@ export default function LandingPage() {
         <div className="mx-auto flex h-14 max-w-[70rem] items-center justify-between px-6 sm:px-10 lg:px-14">
           <Link href="/" className="flex items-center gap-2">
             <Image
-              src="/tutormigo-logo.png"
-              alt="Tutormigo"
+              src="/neoprep-logo.png"
+              alt="NeoPrep"
               width={28}
               height={28}
               className="h-7 w-7 rounded-lg object-cover"
               priority
             />
-            <span className={`text-lg font-medium ${headingTrack} ${ink}`}>Tutormigo</span>
+            <span className={`text-lg font-medium ${headingTrack} ${ink}`}>NeoPrep</span>
           </Link>
           <nav className={`hidden items-center gap-6 text-base font-medium ${muted} md:flex`}>
             <a href="#platform" className="transition hover:text-[#111111]">
@@ -162,11 +162,11 @@ export default function LandingPage() {
             <p className="mb-3 inline-flex rounded-full border-2 border-[#E4E4E7] bg-white px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[#71717A]">
               Free platform
             </p>
-            <h1 className={`text-4xl font-semibold leading-[1.1] tracking-wide text-[#3F3F46] sm:text-5xl lg:text-[3.25rem]`}>
+            <h1 className={`text-4xl font-semibold leading-[1.1] tracking-wide text-arc-ink sm:text-5xl lg:text-[3.25rem]`}>
               Get better at the SAT, one question at a time.
             </h1>
             <p className="landing-body mt-5 text-base font-normal leading-relaxed text-[#71717A] sm:text-lg">
-              Join the Tutormigo platform for free. Get 1,000 original SAT questions, clear
+              Join the NeoPrep platform for free. Get 1,000 original SAT questions, clear
               explanations, live group instruction, and a community to keep you on track.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
@@ -180,7 +180,7 @@ export default function LandingPage() {
                 href="https://discord.gg/bCcrzEPQuc"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex rounded-full border-2 border-[#007AFF] bg-[#007AFF] px-6 py-3 text-base font-semibold text-white transition hover:bg-[#0066DD]"
+                className="inline-flex rounded-full border-2 border-arc-accent bg-arc-accent px-6 py-3 text-base font-semibold text-white transition hover:bg-arc-accentDeep"
               >
                 Join Discord Community
               </a>
@@ -195,7 +195,7 @@ export default function LandingPage() {
                   <div className="relative h-full w-full overflow-hidden rounded-full">
                     <Image
                       src="/landing/kyra-hero.jpg"
-                      alt="Kyra, Tutormigo tutor"
+                      alt="Kyra, NeoPrep tutor"
                       fill
                       priority
                       sizes="(max-width: 640px) 70vw, 360px"
@@ -212,11 +212,11 @@ export default function LandingPage() {
               </div>
 
               <div className="px-1 pt-4 pb-0.5 sm:px-1.5">
-                <h2 className={`text-xl font-medium ${headingTrack} text-[#3F3F46] sm:text-2xl`}>
+                <h2 className={`text-xl font-medium ${headingTrack} text-arc-ink sm:text-2xl`}>
                   Learn from a 1560 scorer.
                 </h2>
                 <p className="landing-body mt-1.5 text-sm leading-relaxed text-[#71717A]">
-                  I&apos;m Kyra. I built Tutormigo to help students practice with clear
+                  I&apos;m Kyra. I built NeoPrep to help students practice with clear
                   explanations and real SAT structure.
                 </p>
               </div>
@@ -239,7 +239,7 @@ export default function LandingPage() {
             <div className={`mt-8 overflow-hidden rounded-3xl ${border} bg-white`}>
               <Image
                 src="/landing/dashboard.jpg"
-                alt="Tutormigo question bank dashboard"
+                alt="NeoPrep question bank dashboard"
                 width={1024}
                 height={499}
                 className="h-auto w-full"
@@ -259,7 +259,7 @@ export default function LandingPage() {
             <div className={`mt-8 overflow-hidden rounded-3xl ${border} bg-white`}>
               <Image
                 src="/landing/question-explanation.jpg"
-                alt="Tutormigo practice question with explanation panel"
+                alt="NeoPrep practice question with explanation panel"
                 width={1024}
                 height={497}
                 className="h-auto w-full"
@@ -393,7 +393,7 @@ export default function LandingPage() {
           <div className={`rounded-3xl ${border} bg-white p-6 sm:p-8`}>
             <h2 className={`text-xl font-medium ${headingTrack} ${ink}`}>Platform program policy</h2>
             <p className={`landing-body mt-2 text-sm leading-relaxed ${muted}`}>
-              The Tutormigo Platform Program is free. You get live instruction, the question bank,
+              The NeoPrep Platform Program is free. You get live instruction, the question bank,
               Discord, and platform access. In return, we ask you to
               practice, share feedback, and report issues. You will not be automatically
               charged when the free platform period ends.
@@ -425,7 +425,7 @@ export default function LandingPage() {
                     onClick={() => setOpenFaq(open ? null : i)}
                     className="flex w-full items-center justify-between gap-4 py-5 text-left transition hover:bg-[#FAFAFA]"
                   >
-                    <span className="text-xl font-medium tracking-wide text-[#3F3F46]">{item.q}</span>
+                    <span className="text-xl font-medium tracking-wide text-arc-ink">{item.q}</span>
                     <Chevron open={open} />
                   </button>
                   {open && (
@@ -444,7 +444,7 @@ export default function LandingPage() {
         <div
           className={`landing-body mx-auto flex max-w-[70rem] flex-col items-center justify-between gap-3 px-6 text-sm ${muted} sm:flex-row sm:px-10 lg:px-14`}
         >
-          <p>© {new Date().getFullYear()} Tutormigo</p>
+          <p>© {new Date().getFullYear()} NeoPrep</p>
           <div className="flex gap-4">
             <Link href="/login" className="transition hover:text-[#111111]">
               Join free platform

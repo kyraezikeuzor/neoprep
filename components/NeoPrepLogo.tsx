@@ -1,6 +1,6 @@
 import Image from "next/image";
 
-export default function TutormigoLogo({
+export default function NeoPrepLogo({
   className = "h-8 w-8",
   priority = false,
 }: {
@@ -9,8 +9,8 @@ export default function TutormigoLogo({
 }) {
   return (
     <Image
-      src="/tutormigo-logo.png"
-      alt="Tutormigo"
+      src="/neoprep-logo.png"
+      alt="NeoPrep"
       width={128}
       height={128}
       priority={priority}

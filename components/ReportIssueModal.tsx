@@ -98,7 +98,7 @@ export default function ReportIssueModal({
         </p>
 
         {success ? (
-          <p className="mt-6 rounded-xl bg-[#F1FAF3] px-4 py-3 font-sans text-sm font-medium text-[#2E7D32]">
+          <p className="mt-6 rounded-xl bg-arc-correctBg px-4 py-3 font-sans text-sm font-medium text-arc-correct">
             Thanks — your report was submitted.
           </p>
         ) : (
@@ -113,7 +113,7 @@ export default function ReportIssueModal({
                   return (
                     <label
                       key={opt.value}
-                      className="flex cursor-pointer items-center gap-3 rounded-xl px-2 py-2.5 transition hover:bg-[#F3F4F6]"
+                      className="flex cursor-pointer items-center gap-3 rounded-xl px-2 py-2.5 transition hover:bg-arc-soft"
                     >
                       <span
                         className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${
@@ -161,12 +161,12 @@ export default function ReportIssueModal({
                 onChange={(e) => setNotes(e.target.value)}
                 rows={4}
                 placeholder="Optional. Add any details that might help"
-                className="w-full resize-y rounded-xl border border-arc-line bg-white px-3 py-2.5 font-sans text-sm font-normal text-arc-ink outline-none transition placeholder:text-arc-muted focus:border-[#007AFF]"
+                className="w-full resize-y rounded-xl border border-arc-line bg-white px-3 py-2.5 font-sans text-sm font-normal text-arc-ink outline-none transition placeholder:text-arc-muted focus:border-arc-accent"
               />
             </div>
 
             {error && (
-              <p className="rounded-xl bg-[#FCE8E6] px-3 py-2 font-sans text-sm text-[#E85A54]">
+              <p className="rounded-xl bg-arc-incorrectBg px-3 py-2 font-sans text-sm text-arc-incorrect">
                 {error}
               </p>
             )}
@@ -176,14 +176,14 @@ export default function ReportIssueModal({
                 type="button"
                 onClick={onClose}
                 disabled={submitting}
-                className="rounded-lg border border-arc-line bg-white px-4 py-2 font-sans text-sm font-semibold text-arc-ink transition hover:bg-[#F3F4F6] disabled:opacity-50"
+                className="rounded-lg border border-arc-line bg-white px-4 py-2 font-sans text-sm font-semibold text-arc-ink transition hover:bg-arc-soft disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={submitting}
-                className="rounded-lg bg-[#007AFF] px-4 py-2 font-sans text-sm font-semibold text-white transition hover:bg-[#0066DD] disabled:opacity-50"
+                className="rounded-lg bg-arc-accent px-4 py-2 font-sans text-sm font-semibold text-white transition hover:bg-arc-accentDeep disabled:opacity-50"
               >
                 {submitting ? "Submitting…" : "Submit"}
               </button>

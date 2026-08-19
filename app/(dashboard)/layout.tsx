@@ -1,9 +1,8 @@
 import DashboardShell from "@/components/DashboardShell";
-import { getAttemptCount } from "@/app/actions";
-import { getProfileRole, getStudentBootcamp } from "@/app/bootcamp-actions";
-import { createClient } from "@/lib/supabase/server";
+import { getDashboardShellStats } from "@/app/actions";
+import { getAuthedUser, getProfileRole, getStudentBootcamp } from "@/app/actions/bootcamp/auth";
 
-function getInitials(user: {
+function getDisplayName(user: {
   email?: string | null;
   user_metadata?: Record<string, unknown>;
 }) {
@@ -13,34 +12,26 @@ function getInitials(user: {
     (typeof meta.name === "string" && meta.name) ||
     "";
 
-  if (fullName.trim()) {
-    const parts = fullName.trim().split(/\s+/);
-    const first = parts[0]?.[0] ?? "";
-    const last = parts.length > 1 ? parts[parts.length - 1][0] ?? "" : "";
-    return (first + last).toUpperCase() || "U";
-  }
+  if (fullName.trim()) return fullName.trim();
 
   const email = user.email ?? "";
-  if (email.length >= 2) return email.slice(0, 2).toUpperCase();
-  if (email.length === 1) return email.toUpperCase();
-  return "U";
+  if (email.includes("@")) return email.split("@")[0] || "User";
+  return email || "User";
 }
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const [attemptCount, role, bootcamp] = await Promise.all([
-    getAttemptCount(),
+  const [{ user }, shellStats, role, bootcamp] = await Promise.all([
+    getAuthedUser(),
+    getDashboardShellStats(),
     getProfileRole(),
     getStudentBootcamp(),
   ]);
 
   return (
     <DashboardShell
-      attemptCount={attemptCount}
-      userInitials={user ? getInitials(user) : "U"}
+      xpTotal={shellStats.xpTotal}
+      streak={shellStats.streak}
+      userName={user ? getDisplayName(user) : "User"}
       bootcampName={bootcamp?.name ?? null}
       isAdmin={role === "admin"}
     >

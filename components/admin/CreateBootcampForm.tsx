@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createBootcamp } from "@/app/bootcamp-actions";
+import { createBootcamp } from "@/app/actions/bootcamp";
 
 export default function CreateBootcampForm() {
   const router = useRouter();
@@ -30,7 +30,7 @@ export default function CreateBootcampForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4 rounded-2xl border-2 border-[#E5E7EB] bg-white p-5">
+    <form onSubmit={onSubmit} className="arc-card space-y-4 p-5">
       <h2 className="font-sans text-base font-semibold text-arc-ink">Create bootcamp</h2>
       <label className="block">
         <span className="font-sans text-xs font-medium text-arc-muted">Name</span>
@@ -68,7 +68,7 @@ export default function CreateBootcampForm() {
       <button
         type="submit"
         disabled={loading}
-        className="rounded-full bg-[#007AFF] px-5 py-2.5 font-sans text-sm font-semibold text-white transition hover:bg-[#0066DD] disabled:opacity-60"
+        className="arc-btn-primary disabled:opacity-60"
       >
         {loading ? "Creating..." : "Create bootcamp"}
       </button>

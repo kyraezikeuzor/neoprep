@@ -1,11 +1,9 @@
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
-import { getQuestionById } from "@/app/actions";
-import { getProfileRole } from "@/app/bootcamp-actions";
-import QuestionViewer from "@/components/QuestionViewer";
+import { getProfileRole } from "@/app/actions/bootcamp";
 
 export const metadata: Metadata = {
-  title: "Question Search · Tutormigo",
+  title: "Question Search · NeoPrep",
 };
 
 export default async function QuestionViewerPage({
@@ -15,16 +13,9 @@ export default async function QuestionViewerPage({
 }) {
   const role = await getProfileRole();
   if (role !== "admin") redirect("/question-bank");
-
-  const requestedId = searchParams?.question?.trim() ?? "";
-  const question = requestedId ? await getQuestionById(requestedId) : null;
-
-  return (
-    <div className="h-full min-h-0">
-      <QuestionViewer
-        initialQuestion={question}
-        initialId={question?.question_id ?? requestedId}
-      />
-    </div>
-  );
+  const requestedId = searchParams?.question?.trim();
+  const destination = requestedId
+    ? `/admin/question-search?question=${encodeURIComponent(requestedId)}`
+    : "/admin/question-search";
+  redirect(destination);
 }

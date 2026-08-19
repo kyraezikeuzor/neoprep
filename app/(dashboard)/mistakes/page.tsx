@@ -5,7 +5,7 @@ import DashboardPageShell from "@/components/DashboardPageShell";
 import PageHeader from "@/components/PageHeader";
 
 export const metadata: Metadata = {
-  title: "Mistakes · Tutormigo",
+  title: "Mistakes · NeoPrep",
 };
 
 function truncateStem(stem: string, max = 140) {
@@ -25,42 +25,64 @@ function formatWhen(iso: string) {
   return `${days}d ago`;
 }
 
+function XCircleIcon() {
+  return (
+    <svg viewBox="0 0 80 80" className="h-24 w-24" fill="none" aria-hidden>
+      <circle cx="40" cy="40" r="28" stroke="currentColor" strokeWidth="3" />
+      <path
+        d="M30 30l20 20M50 30L30 50"
+        stroke="currentColor"
+        strokeWidth="3.5"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 export default async function MistakesPage() {
   const errors = await getRecentErrors();
 
   return (
     <DashboardPageShell>
-      <PageHeader
-        title="Mistakes"
-        description="Missed questions from all practice · tap one to retry it"
-      />
+      <PageHeader title="Mistakes" />
 
       {errors.length === 0 ? (
-        <div className="mt-10 rounded-arc border border-arc-line bg-white px-5 py-10 text-center font-sans text-sm text-arc-muted">
-          No incorrect attempts yet.
+        <div className="arc-card relative mt-8 min-h-[9.5rem] overflow-hidden px-6 py-5">
+          <p className="arc-card-label">Mistakes</p>
+          <p className="mt-3 font-sans text-4xl font-normal tabular-nums leading-none tracking-tight text-arc-heading">
+            0
+          </p>
+          <p className="arc-card-hint mt-2">No incorrect attempts yet.</p>
+          <div className="pointer-events-none absolute -bottom-3 -right-2 text-arc-line">
+            <XCircleIcon />
+          </div>
         </div>
       ) : (
-        <ul className="mt-10 space-y-3">
+        <ul className="mt-8 space-y-4">
           {errors.map((item) => (
             <li key={item.attempt_id}>
               <Link
                 href={`/question-bank?question=${encodeURIComponent(item.question_id)}`}
-                className="block rounded-arc border border-arc-line bg-white px-5 py-4 transition hover:border-arc-accent/40 hover:shadow-sm"
+                className="arc-card relative block overflow-hidden px-6 py-5 transition hover:bg-arc-soft/40"
               >
-                <div className="flex items-start justify-between gap-4">
+                <div className="flex items-start justify-between gap-3 sm:gap-4">
                   <div className="min-w-0">
-                    <p className="font-sans text-xs font-medium text-arc-muted">
-                      {[item.domain, item.skill].filter(Boolean).join(" · ") || "Question"}
+                    <p className="arc-card-label">
+                      {[item.domain, item.skill].filter(Boolean).join(" · ") ||
+                        "Question"}
                     </p>
-                    <p className="mt-1 font-sans text-sm leading-relaxed text-arc-ink">
+                    <p className="mt-3 font-sans text-base font-normal leading-relaxed text-arc-heading">
                       {truncateStem(item.stem)}
                     </p>
+                    <p className="arc-card-hint mt-3">{formatWhen(item.attempted_at)}</p>
                   </div>
-                  <p className="shrink-0 font-sans text-xs text-arc-muted">
-                    {formatWhen(item.attempted_at)}
-                  </p>
+                  <span className="relative z-10 inline-flex min-h-9 shrink-0 items-center justify-center rounded-full border border-arc-line bg-white px-3 py-1 font-sans text-xs font-medium text-[#8F8F98]">
+                    Retry
+                  </span>
                 </div>
-                <p className="mt-3 font-sans text-sm font-medium text-arc-muted">Retry this question →</p>
+                <div className="pointer-events-none absolute -bottom-3 -right-2 text-arc-line opacity-70">
+                  <XCircleIcon />
+                </div>
               </Link>
             </li>
           ))}

@@ -5,7 +5,7 @@ import DashboardPageShell from "@/components/DashboardPageShell";
 import PageHeader from "@/components/PageHeader";
 
 export const metadata: Metadata = {
-  title: "Recent Errors · Tutormigo",
+  title: "Recent Errors · NeoPrep",
 };
 
 function truncateStem(stem: string, max = 140) {
@@ -36,13 +36,10 @@ export default async function RecentErrorsPage() {
       >
         ← Back to Dashboard
       </Link>
-      <PageHeader
-        title="Recent Errors"
-        description="Missed questions from all practice · tap one to retry it"
-      />
+      <PageHeader title="Recent Errors" />
 
       {errors.length === 0 ? (
-        <div className="mt-10 rounded-arc border border-arc-line bg-white px-5 py-10 text-center font-sans text-sm text-arc-muted">
+        <div className="mt-10 rounded-2xl border-2 border-arc-line bg-white px-5 py-10 text-center font-sans text-sm text-arc-muted">
           No incorrect attempts yet.
         </div>
       ) : (
@@ -51,7 +48,7 @@ export default async function RecentErrorsPage() {
             <li key={item.attempt_id}>
               <Link
                 href={`/question-bank?question=${encodeURIComponent(item.question_id)}`}
-                className="block rounded-arc border border-arc-line bg-white px-5 py-4 transition hover:border-arc-accent/40 hover:shadow-sm"
+                className="block rounded-2xl border-2 border-arc-line bg-white px-5 py-4 transition hover:border-arc-accent/40 hover:shadow-sm"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">

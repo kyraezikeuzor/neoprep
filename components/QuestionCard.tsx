@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import MathText from "./MathText";
 import GraphRenderer, { type GraphSpec } from "./graphs/GraphRenderer";
-import { getRandomQuestion, submitAttempt, type Question } from "@/app/actions";
+import { getRandomQuestion, submitAttempt, toggleBookmark, type Question } from "@/app/actions";
 import type { SubjectFilter, TierFilter } from "@/lib/subjects";
 import { MATH_DOMAINS } from "@/lib/subjects";
 import { splitLeadingEquations } from "@/lib/mathText";
@@ -186,6 +186,7 @@ export default function QuestionCard({
   hideFilters = false,
   initialSessionResults,
   initialHistoryIndex = 0,
+  initialBookmarkedIds,
 }: {
   initialQuestion: Question | null;
   /** Tighter top padding when nested (e.g. Question Search card) */
@@ -202,6 +203,8 @@ export default function QuestionCard({
   initialSessionResults?: Record<string, { correct: boolean; selectedAnswer: string }>;
   /** Start index into questionQueue / history (e.g. first unanswered). */
   initialHistoryIndex?: number;
+  /** Question IDs already in the bookmarks table for this student. */
+  initialBookmarkedIds?: string[];
 }) {
   const router = useRouter();
   const { setPracticeActive } = usePracticeSession();
@@ -240,22 +243,20 @@ export default function QuestionCard({
   const [loadingNext, setLoadingNext] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [timeHidden, setTimeHidden] = useState(false);
-  const [selectedTier, setSelectedTier] = useState<TierFilter>(initialTier);
-  const [selectedSubject, setSelectedSubject] = useState<SubjectFilter>(initialSubject);
+  const [selectedTier] = useState<TierFilter>(initialTier);
+  const [selectedSubject] = useState<SubjectFilter>(initialSubject);
   const [sessionComplete, setSessionComplete] = useState(false);
   const [reviewingFromResults, setReviewingFromResults] = useState(false);
   const [calculatorOpen, setCalculatorOpen] = useState(false);
   const [highlightsOpen, setHighlightsOpen] = useState(false);
   const [highlights, setHighlights] = useState<Highlight[]>([]);
   const [reportOpen, setReportOpen] = useState(false);
-  const [markedForReview, setMarkedForReview] = useState<Set<string>>(() => new Set());
+  const [markedForReview, setMarkedForReview] = useState<Set<string>>(
+    () => new Set(initialBookmarkedIds ?? [])
+  );
   const [eliminated, setEliminated] = useState<Set<string>>(() => new Set());
-  const [topicOpen, setTopicOpen] = useState(false);
-  const [difficultyOpen, setDifficultyOpen] = useState(false);
   const [selectPulse, setSelectPulse] = useState<{ letter: string; n: number } | null>(null);
   const [navigatorOpen, setNavigatorOpen] = useState(false);
-  const topicRef = useRef<HTMLDivElement>(null);
-  const difficultyRef = useRef<HTMLDivElement>(null);
   const passageRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const qbPrefetchDone = useRef(false);
@@ -374,12 +375,34 @@ export default function QuestionCard({
 
   function toggleMarkForReview() {
     if (!question) return;
+    const questionId = question.question_id;
+    const wasMarked = markedForReview.has(questionId);
+
     setMarkedForReview((prev) => {
       const next = new Set(prev);
-      if (next.has(question.question_id)) next.delete(question.question_id);
-      else next.add(question.question_id);
+      if (wasMarked) next.delete(questionId);
+      else next.add(questionId);
       return next;
     });
+
+    void (async () => {
+      const result = await toggleBookmark(questionId);
+      if (!result.ok) {
+        setMarkedForReview((prev) => {
+          const next = new Set(prev);
+          if (wasMarked) next.add(questionId);
+          else next.delete(questionId);
+          return next;
+        });
+        return;
+      }
+      setMarkedForReview((prev) => {
+        const next = new Set(prev);
+        if (result.bookmarked) next.add(questionId);
+        else next.delete(questionId);
+        return next;
+      });
+    })();
   }
 
   function toggleEliminate(letter: string) {
@@ -469,35 +492,6 @@ export default function QuestionCard({
   useEffect(() => {
     if (!isMathQuestion) setCalculatorOpen(false);
   }, [isMathQuestion]);
-
-  useEffect(() => {
-    if (!topicOpen && !difficultyOpen) return;
-    function onPointerDown(e: MouseEvent) {
-      const target = e.target as Node;
-      if (topicOpen && topicRef.current && !topicRef.current.contains(target)) {
-        setTopicOpen(false);
-      }
-      if (
-        difficultyOpen &&
-        difficultyRef.current &&
-        !difficultyRef.current.contains(target)
-      ) {
-        setDifficultyOpen(false);
-      }
-    }
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") {
-        setTopicOpen(false);
-        setDifficultyOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", onPointerDown);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onPointerDown);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [topicOpen, difficultyOpen]);
 
   useEffect(() => {
     if (timerRef.current) {
@@ -670,34 +664,6 @@ export default function QuestionCard({
     resetAttemptState();
   }
 
-  async function handleTierSelect(tier: TierFilter) {
-    setDifficultyOpen(false);
-    if (tier === selectedTier) return;
-    setSelectedTier(tier);
-    setLoadingNext(true);
-    const next = await getRandomQuestion({
-      excludeId: question?.question_id,
-      tier,
-      subject: selectedSubject,
-    });
-    applyQuestion(next, "replace");
-    setLoadingNext(false);
-  }
-
-  async function handleSubjectChange(subject: SubjectFilter) {
-    setTopicOpen(false);
-    if (subject === selectedSubject) return;
-    setSelectedSubject(subject);
-    setLoadingNext(true);
-    const next = await getRandomQuestion({
-      excludeId: question?.question_id,
-      tier: selectedTier,
-      subject,
-    });
-    applyQuestion(next, "replace");
-    setLoadingNext(false);
-  }
-
   if (!question && !sessionComplete) {
     return (
       <div className="mx-auto max-w-2xl px-8 py-16 text-center">
@@ -716,7 +682,7 @@ export default function QuestionCard({
             <p className="font-sans text-xs font-medium uppercase tracking-wide text-arc-muted">
               Session complete
             </p>
-            <h2 className="mt-2 font-sans text-3xl font-semibold tracking-tight text-[#3F3F46]">
+            <h2 className="mt-2 font-sans text-3xl font-semibold tracking-tight text-arc-ink">
               {correct} of {total} correct
             </h2>
           </div>
@@ -726,7 +692,7 @@ export default function QuestionCard({
               <p className="font-sans text-xs font-medium uppercase tracking-wide text-arc-muted">
                 Missed
               </p>
-              <ul className="mt-2 divide-y divide-[#E5E7EB] rounded-2xl border-2 border-[#E5E7EB] bg-white">
+              <ul className="mt-2 divide-y divide-arc-line rounded-2xl border border-arc-line bg-white">
                 {missedSessionQuestions.map((q) => {
                   const tag = [q.domain, q.skill].filter(Boolean).join(" · ") || "Question";
                   return (
@@ -734,12 +700,12 @@ export default function QuestionCard({
                       <button
                         type="button"
                         onClick={() => reviewMissedQuestion(q.question_id)}
-                        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition hover:bg-[#FAFAFA]"
+                        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition hover:bg-arc-bg"
                       >
                         <span className="min-w-0 truncate font-sans text-sm font-medium text-arc-ink">
                           {tag}
                         </span>
-                        <span className="shrink-0 font-sans text-xs font-medium text-[#007AFF]">
+                        <span className="shrink-0 font-sans text-xs font-medium text-arc-accent">
                           Review
                         </span>
                       </button>
@@ -756,7 +722,7 @@ export default function QuestionCard({
                 type="button"
                 onClick={startAnotherSession}
                 disabled={loadingNext}
-                className="rounded-full bg-[#007AFF] px-6 py-3 font-sans text-base font-semibold text-white transition hover:bg-[#0066DD] disabled:opacity-60"
+                className="arc-btn-primary rounded-full px-6 py-3 text-base disabled:opacity-60"
               >
                 {loadingNext ? "Loading..." : "Practice 5 More"}
               </button>
@@ -764,7 +730,7 @@ export default function QuestionCard({
             <button
               type="button"
               onClick={returnToBankLanding}
-              className="rounded-full border-2 border-[#E5E7EB] bg-white px-6 py-3 font-sans text-base font-semibold text-arc-ink transition hover:bg-[#F7F7F7]"
+              className="arc-btn-secondary rounded-full px-6 py-3 text-base"
             >
               {sessionExitLabel}
             </button>
@@ -817,195 +783,75 @@ export default function QuestionCard({
     Boolean(readingStimulus);
 
   const TOPIC_OPTIONS: { value: SubjectFilter; label: string }[] = [
-    { value: "all", label: "Random" },
+    { value: "all", label: "All" },
     { value: "math", label: "Math" },
-    { value: "reading_writing", label: "Reading & Writing" },
+    { value: "reading_writing", label: "R and W" },
   ];
 
   const selectedTierLabel =
     TIER_OPTIONS.find((o) => o.value === selectedTier)?.label ?? "Random";
   const selectedTopicLabel =
-    TOPIC_OPTIONS.find((o) => o.value === selectedSubject)?.label ?? "Random";
+    TOPIC_OPTIONS.find((o) => o.value === selectedSubject)?.label ?? "All";
 
   return (
     <div className="relative flex h-full min-h-0 w-full flex-col overflow-hidden">
       {/* Header stays full-width — side panels never compress it */}
-      <div className={`shrink-0 px-6 sm:px-8 ${embedded ? "pt-3" : "pt-2"}`}>
-          {/* Topic · Difficulty · timer · calculator — single compact row */}
+      <div className={`shrink-0 px-3 sm:px-6 md:px-8 ${embedded ? "pt-3" : "pt-2"}`}>
+          {/* Selection labels · timer · calculator — single compact row */}
           <div className="w-full border-b border-arc-line pb-1.5">
-            <div className="grid w-full grid-cols-[1fr_auto_1fr] items-center gap-3">
-              <div className="flex min-w-0 flex-wrap items-center justify-start gap-2">
+            <div className="grid w-full grid-cols-[1fr_auto_1fr] items-center gap-2 sm:gap-3">
+              <div className="flex min-w-0 flex-wrap items-center justify-start gap-1.5 sm:gap-2">
                 <button
                   type="button"
                   onClick={returnToBankLanding}
-                  className="rounded-lg bg-arc-ink px-3.5 py-1.5 font-sans text-sm font-semibold text-white transition hover:bg-[#2D2D2D]"
+                  className="rounded-lg bg-arc-ink px-3 py-1.5 font-sans text-sm font-semibold text-white transition hover:bg-[#2D2D2D] sm:px-3.5"
                 >
                   Exit
                 </button>
                 {!hideFilters && (
-                  <>
-                <div className="relative shrink-0" ref={topicRef}>
-                  <button
-                    type="button"
-                    aria-haspopup="listbox"
-                    aria-expanded={topicOpen}
-                    onClick={() => {
-                      setTopicOpen((o) => !o);
-                      setDifficultyOpen(false);
-                    }}
-                    className="inline-flex items-center gap-2 rounded-full bg-[#F7F7F7] px-3 py-1.5 font-sans text-sm font-normal text-arc-ink transition hover:bg-[#EFEFEF]"
-                  >
-                    <svg
-                      viewBox="0 0 24 24"
-                      className="h-4 w-4 text-[#6B6B6B]"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.8"
-                      aria-hidden
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M4 19.5A2.5 2.5 0 016.5 17H20"
-                      />
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"
-                      />
-                      <path strokeLinecap="round" d="M9 7h6M9 11h4" />
-                    </svg>
-                    <span>{selectedTopicLabel}</span>
-                    <svg
-                      viewBox="0 0 24 24"
-                      className={`h-3.5 w-3.5 text-arc-ink transition ${topicOpen ? "rotate-180" : ""}`}
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2.2"
-                      aria-hidden
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 9l6 6 6-6" />
-                    </svg>
-                  </button>
-
-                  {topicOpen && (
-                    <div
-                      role="listbox"
-                      aria-label="Topic"
-                      className="absolute left-0 top-full z-40 mt-2 w-64 rounded-2xl border border-arc-line bg-white p-3 shadow-[0_8px_30px_rgba(0,0,0,0.08)]"
-                    >
-                      <p className="mb-2 px-2 pt-1 text-sm font-semibold text-arc-ink">Topic</p>
-                      <div className="space-y-0.5">
-                        {TOPIC_OPTIONS.map((opt) => {
-                          const selected = selectedSubject === opt.value;
-                          return (
-                            <button
-                              key={opt.value}
-                              type="button"
-                              role="option"
-                              aria-selected={selected}
-                              onClick={() => handleSubjectChange(opt.value)}
-                              className="flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left text-sm text-arc-ink transition hover:bg-[#F3F4F6]"
-                            >
-                              <span
-                                className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${
-                                  selected
-                                    ? "border-arc-ink bg-arc-ink"
-                                    : "border-[#D1D5DB] bg-white"
-                                }`}
-                                aria-hidden
-                              >
-                                {selected && (
-                                  <span className="h-1.5 w-1.5 rounded-full bg-white" />
-                                )}
-                              </span>
-                              {opt.label}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="relative shrink-0" ref={difficultyRef}>
-                  <button
-                    type="button"
-                    aria-haspopup="listbox"
-                    aria-expanded={difficultyOpen}
-                    onClick={() => {
-                      setDifficultyOpen((o) => !o);
-                      setTopicOpen(false);
-                    }}
-                    className="inline-flex items-center gap-2 rounded-full bg-[#F7F7F7] px-3 py-1.5 font-sans text-sm font-normal text-arc-ink transition hover:bg-[#EFEFEF]"
-                  >
-                    <svg
-                      viewBox="0 0 24 24"
-                      className="h-4 w-4 text-[#6B6B6B]"
-                      fill="currentColor"
-                      aria-hidden
-                    >
-                      <rect x="4" y="14" width="3.5" height="6" rx="0.5" />
-                      <rect x="10.25" y="9" width="3.5" height="11" rx="0.5" />
-                      <rect x="16.5" y="4" width="3.5" height="16" rx="0.5" />
-                    </svg>
-                    <span>{selectedTierLabel}</span>
-                    <svg
-                      viewBox="0 0 24 24"
-                      className={`h-3.5 w-3.5 text-arc-ink transition ${
-                        difficultyOpen ? "rotate-180" : ""
-                      }`}
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2.2"
-                      aria-hidden
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 9l6 6 6-6" />
-                    </svg>
-                  </button>
-
-                  {difficultyOpen && (
-                    <div
-                      role="listbox"
-                      aria-label="Difficulty"
-                      className="absolute left-0 top-full z-40 mt-2 w-56 rounded-2xl border border-arc-line bg-white p-3 shadow-[0_8px_30px_rgba(0,0,0,0.08)]"
-                    >
-                      <p className="mb-2 px-2 pt-1 text-sm font-semibold text-arc-ink">
-                        Difficulty
-                      </p>
-                      <div className="space-y-0.5">
-                        {TIER_OPTIONS.map((opt) => {
-                          const selected = selectedTier === opt.value;
-                          return (
-                            <button
-                              key={String(opt.value)}
-                              type="button"
-                              role="option"
-                              aria-selected={selected}
-                              onClick={() => handleTierSelect(opt.value)}
-                              className="flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left text-sm text-arc-ink transition hover:bg-[#F3F4F6]"
-                            >
-                              <span
-                                className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${
-                                  selected
-                                    ? "border-arc-ink bg-arc-ink"
-                                    : "border-[#D1D5DB] bg-white"
-                                }`}
-                                aria-hidden
-                              >
-                                {selected && (
-                                  <span className="h-1.5 w-1.5 rounded-full bg-white" />
-                                )}
-                              </span>
-                              {opt.label}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </div>
-                  </>
+                  <div className="hidden min-w-0 flex-wrap items-center gap-2 sm:flex">
+                    <span className="inline-flex items-center gap-2 rounded-full bg-arc-soft px-3 py-1.5 font-sans text-sm font-normal text-arc-heading">
+                      <svg
+                        viewBox="0 0 24 24"
+                        className="h-4 w-4 text-[#8F8F98]"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.8"
+                        aria-hidden
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M4 19.5A2.5 2.5 0 016.5 17H20"
+                        />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"
+                        />
+                        <path strokeLinecap="round" d="M9 7h6M9 11h4" />
+                      </svg>
+                      {selectedTopicLabel}
+                    </span>
+                    <span className="inline-flex items-center gap-2 rounded-full bg-arc-soft px-3 py-1.5 font-sans text-sm font-normal text-arc-heading">
+                      <svg
+                        viewBox="0 0 24 24"
+                        className="h-4 w-4 text-[#8F8F98]"
+                        fill="currentColor"
+                        aria-hidden
+                      >
+                        <rect x="4" y="14" width="3.5" height="6" rx="0.5" />
+                        <rect x="10.25" y="9" width="3.5" height="11" rx="0.5" />
+                        <rect x="16.5" y="4" width="3.5" height="16" rx="0.5" />
+                      </svg>
+                      {selectedTierLabel}
+                    </span>
+                    {typeof sessionLength === "number" && sessionLength > 0 ? (
+                      <span className="inline-flex items-center rounded-full bg-arc-soft px-3 py-1.5 font-sans text-sm font-normal text-arc-heading">
+                        {sessionLength} questions
+                      </span>
+                    ) : null}
+                  </div>
                 )}
               </div>
 
@@ -1032,7 +878,7 @@ export default function QuestionCard({
                   onClick={() => !submitted && setIsPaused((p) => !p)}
                   disabled={submitted}
                   aria-label={isPaused ? "Resume timer" : "Pause timer"}
-                  className="flex h-6 w-6 items-center justify-center rounded-full border border-arc-line text-arc-muted transition hover:bg-[#F3F4F6] hover:text-arc-ink disabled:opacity-40"
+                  className="flex h-6 w-6 items-center justify-center rounded-full border border-arc-line text-arc-muted transition hover:bg-arc-soft hover:text-arc-ink disabled:opacity-40"
                 >
                   {isPaused ? (
                     <svg viewBox="0 0 24 24" className="h-2.5 w-2.5 fill-current" aria-hidden>
@@ -1047,7 +893,7 @@ export default function QuestionCard({
                 <button
                   type="button"
                   onClick={() => setTimeHidden((h) => !h)}
-                  className="rounded-full border border-arc-line px-2 py-0.5 text-[11px] text-arc-muted transition hover:bg-[#F3F4F6] hover:text-arc-ink"
+                  className="rounded-full border border-arc-line px-2 py-0.5 text-[11px] text-arc-muted transition hover:bg-arc-soft hover:text-arc-ink"
                 >
                   {timeHidden ? "Show" : "Hide"}
                 </button>
@@ -1095,10 +941,10 @@ export default function QuestionCard({
           <div
             ref={passageRef}
             onMouseUp={handlePassageMouseUp}
-            className="relative flex min-h-0 flex-1 overflow-hidden"
+            className="relative flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row"
           >
             {hasLeftPanel && (
-              <div className="min-h-0 w-1/2 overflow-y-auto overscroll-contain px-8 py-7 sm:px-10 sm:py-8">
+              <div className="min-h-0 max-h-[42%] w-full shrink-0 overflow-y-auto overscroll-contain border-b border-arc-line px-4 py-4 sm:px-6 sm:py-5 md:max-h-none md:w-1/2 md:shrink-0 md:border-b-0 md:px-8 md:py-7 lg:px-10 lg:py-8">
                 <div className="question-prose mx-auto max-w-xl">
                   {hasGraph && (
                     <div className="mb-5">
@@ -1137,7 +983,7 @@ export default function QuestionCard({
 
             {hasLeftPanel && (
               <div
-                className="relative z-10 flex w-0 shrink-0 items-center justify-center"
+                className="relative z-10 hidden w-0 shrink-0 items-center justify-center md:flex"
                 aria-hidden
               >
                 <div className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-arc-line" />
@@ -1150,13 +996,13 @@ export default function QuestionCard({
             )}
 
             <div
-              className={`flex min-h-0 min-w-0 flex-col overflow-hidden ${
-                hasLeftPanel ? "w-1/2" : "w-full"
+              className={`flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden ${
+                hasLeftPanel ? "md:w-1/2 md:flex-none" : "w-full"
               }`}
             >
               {/* Question header — pill bar with black end caps */}
               <div className="shrink-0 px-4 pt-3 sm:px-6">
-                <div className="flex h-9 w-full items-stretch overflow-hidden rounded-lg bg-[#F7F7F7]">
+                <div className="flex h-9 w-full items-stretch overflow-hidden rounded-lg bg-[#F9FAFB]">
                   <span
                     className="flex aspect-square h-full shrink-0 items-center justify-center bg-arc-ink font-sans text-sm font-semibold tabular-nums text-white"
                     aria-label={`Question ${sessionQuestionNumber}`}
@@ -1189,7 +1035,7 @@ export default function QuestionCard({
                           d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
                         />
                       </svg>
-                      Mark for Review
+                      {isMarkedForReview ? "Saved for Review" : "Mark for Review"}
                     </button>
 
                     <div className="flex shrink-0 items-center gap-2">
@@ -1246,7 +1092,7 @@ export default function QuestionCard({
                     aria-pressed={highlightsOpen}
                     aria-label={highlightsOpen ? "Close highlight" : "Open highlight"}
                     className={`relative flex aspect-square h-full shrink-0 items-center justify-center text-white transition ${
-                      highlightsOpen ? "bg-[#007AFF]" : "bg-arc-ink hover:bg-[#2D2D2D]"
+                      highlightsOpen ? "bg-arc-accent" : "bg-arc-ink hover:bg-[#2D2D2D]"
                     }`}
                   >
                     <svg
@@ -1261,7 +1107,7 @@ export default function QuestionCard({
                       <path strokeLinecap="round" d="M7 12h10" />
                     </svg>
                     {highlights.length > 0 && (
-                      <span className="absolute right-0.5 top-0.5 flex h-3.5 min-w-[0.875rem] items-center justify-center rounded-full bg-[#007AFF] px-0.5 text-[9px] font-semibold leading-none text-white ring-2 ring-[#F7F7F7]">
+                      <span className="absolute right-0.5 top-0.5 flex h-3.5 min-w-[0.875rem] items-center justify-center rounded-full bg-arc-accent px-0.5 text-[9px] font-semibold leading-none text-white ring-2 ring-white">
                         {highlights.length}
                       </span>
                     )}
@@ -1269,7 +1115,7 @@ export default function QuestionCard({
                 </div>
               </div>
 
-              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 pb-4 pt-5 sm:px-8 sm:pt-6">
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-4 pt-4 sm:px-6 sm:pt-5 md:px-8 md:pt-6">
                 <div className={`mx-auto min-w-0 w-full ${hasLeftPanel ? "max-w-xl" : "max-w-2xl"}`}>
                   <div className="question-prose mb-6">
                     <MathText text={rightStemText} className="math-text" />
@@ -1298,9 +1144,9 @@ export default function QuestionCard({
                       className={`question-prose choice-text w-full rounded-md border px-4 py-3 outline-none transition ${
                         submitted
                           ? isCorrect
-                            ? "border-[#2E7D32] bg-[#F1FAF3] text-[#2E7D32]"
+                            ? "border-arc-correct bg-arc-correctBg text-arc-correct"
                             : "border-arc-incorrect bg-arc-incorrectBg text-arc-incorrect"
-                          : "border-arc-line focus:border-[#007AFF]"
+                          : "border-arc-line focus:border-arc-accent"
                       }`}
                     />
                   ) : (
@@ -1320,11 +1166,13 @@ export default function QuestionCard({
 
                         if (submitted) {
                           if (isTheCorrectAnswer) {
-                            stateClasses = "border-2 border-[#2E7D32] bg-[#F1FAF3]";
-                            bubbleClasses = "border-[#2E7D32] bg-[#2E7D32] text-white";
+                            stateClasses = "border border-arc-correct bg-arc-correctBg";
+                            bubbleClasses = "border-arc-correct bg-arc-correct text-white";
                           } else if (isWrongPick) {
-                            stateClasses = "border-2 border-[#E85A54] bg-[#FCE8E6]";
-                            bubbleClasses = "border-[#E85A54] bg-[#E85A54] text-white";
+                            stateClasses =
+                              "border border-arc-incorrect bg-arc-incorrectBg";
+                            bubbleClasses =
+                              "border-arc-incorrect bg-arc-incorrect text-white";
                           } else {
                             stateClasses =
                               "border border-arc-muted/30 bg-white opacity-55";
@@ -1332,9 +1180,8 @@ export default function QuestionCard({
                               "border-arc-muted/40 bg-transparent text-arc-ink/50";
                           }
                         } else if (isSelected) {
-                          stateClasses =
-                            "border-[3px] border-[#007AFF] bg-[#F0F7FF] shadow-[0_0_0_1px_rgba(0,122,255,0.12)]";
-                          bubbleClasses = "border-[#007AFF] bg-[#007AFF] text-white";
+                          stateClasses = "border border-arc-accent bg-arc-accentSoft";
+                          bubbleClasses = "border-arc-accent bg-arc-accent text-white";
                         } else if (isEliminated) {
                           stateClasses = "border border-arc-muted/30 bg-white opacity-60";
                           bubbleClasses =
@@ -1431,14 +1278,14 @@ export default function QuestionCard({
           </div>
 
         {/* Bottom action bar — pinned in layout, never off-screen */}
-        <div className="z-20 shrink-0 border-t border-arc-line bg-white px-6 py-3 sm:px-8">
-          <div className="grid w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
-            <div className="min-w-0 justify-self-start">
+        <div className="z-20 shrink-0 border-t border-arc-line bg-white px-3 py-3 sm:px-6 md:px-8">
+          <div className="grid w-full grid-cols-1 items-center gap-3 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:gap-2">
+            <div className="min-w-0 justify-self-center sm:justify-self-start">
               {isFixedSession ? (
                 <button
                   type="button"
                   onClick={() => setNavigatorOpen(true)}
-                  className="inline-flex items-center gap-2 rounded-full bg-arc-ink px-4 py-2 font-sans text-sm font-semibold tabular-nums text-white transition hover:bg-[#2D2D2D]"
+                  className="inline-flex min-h-10 items-center gap-2 rounded-full bg-arc-ink px-3.5 py-2 font-sans text-sm font-semibold tabular-nums text-white transition hover:bg-[#2D2D2D] sm:px-4"
                   aria-haspopup="dialog"
                   aria-expanded={navigatorOpen}
                 >
@@ -1513,12 +1360,12 @@ export default function QuestionCard({
                 </button>
               )}
 
-              <div className="flex items-center justify-center gap-3">
+              <div className="flex flex-wrap items-center justify-center gap-2 sm:flex-nowrap sm:gap-3">
                 {reviewingFromResults ? (
                   <button
                     type="button"
                     onClick={backToSessionResults}
-                    className="rounded-lg bg-[#007AFF] px-8 py-3 text-base font-semibold text-white transition hover:bg-[#0066DD]"
+                    className="arc-btn-primary rounded-lg px-8 py-3 text-base"
                   >
                     Back to results
                   </button>
@@ -1528,7 +1375,7 @@ export default function QuestionCard({
                       type="button"
                       onClick={handlePrevious}
                       disabled={!canGoPrevious || loadingNext}
-                      className="rounded-lg border border-arc-line bg-white px-6 py-3 text-base font-semibold text-arc-ink transition hover:bg-[#F3F4F6] disabled:cursor-not-allowed disabled:opacity-40"
+                      className="arc-btn-secondary rounded-lg px-6 py-3 text-base disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       Back
                     </button>
@@ -1536,7 +1383,7 @@ export default function QuestionCard({
                     <button
                       onClick={handleSubmit}
                       disabled={submitted || !selected}
-                      className="rounded-lg bg-[#007AFF] px-10 py-3 text-base font-semibold text-white transition hover:bg-[#0066DD] disabled:cursor-not-allowed disabled:opacity-40"
+                      className="arc-btn-primary rounded-lg px-10 py-3 text-base disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       Answer
                     </button>
@@ -1550,7 +1397,7 @@ export default function QuestionCard({
                           historyIndex >= history.length - 1 &&
                           !submitted)
                       }
-                      className="rounded-lg border border-arc-line bg-white px-6 py-3 text-base font-semibold text-arc-ink transition hover:bg-[#F3F4F6] disabled:cursor-not-allowed disabled:opacity-40"
+                      className="arc-btn-secondary rounded-lg px-6 py-3 text-base disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       {loadingNext
                         ? "Loading..."
@@ -1563,7 +1410,7 @@ export default function QuestionCard({
               </div>
             </div>
 
-            <div className="min-w-0 justify-self-end text-right">
+            <div className="hidden min-w-0 justify-self-end text-right sm:block">
               {isFixedSession ? (
                 <>
                   <p className="truncate text-xs font-normal leading-snug text-arc-muted sm:text-sm">
@@ -1605,7 +1452,7 @@ export default function QuestionCard({
               type="button"
               onClick={() => setShowExplanation(false)}
               aria-label="Close explanation"
-              className="rounded-md p-1.5 text-arc-muted transition hover:bg-[#F3F4F6] hover:text-arc-ink"
+              className="rounded-md p-1.5 text-arc-muted transition hover:bg-arc-soft hover:text-arc-ink"
             >
               <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
                 <path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" />
@@ -1616,9 +1463,9 @@ export default function QuestionCard({
           <div className="flex-1 overflow-y-auto px-5 py-5 font-sans">
             <div className="mb-5 rounded-2xl border border-arc-line bg-white p-4">
               <p className="mb-3 text-sm font-medium text-arc-muted">Correct Answer</p>
-              <div className="flex w-full items-center gap-3 rounded-xl bg-[#F1FAF3] px-3 py-2.5">
+              <div className="flex w-full items-center gap-3 rounded-xl bg-arc-correctBg px-3 py-2.5">
                 {correctDisplay.letter && (
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#2E7D32] text-sm font-semibold text-white">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-arc-correct text-sm font-semibold text-white">
                     {correctDisplay.letter}
                   </span>
                 )}

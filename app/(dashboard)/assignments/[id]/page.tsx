@@ -3,7 +3,8 @@ import type { Metadata } from "next";
 import {
   getAssignmentForPractice,
   getStudentBootcamp,
-} from "@/app/bootcamp-actions";
+} from "@/app/actions/bootcamp";
+import { getBookmarkedQuestionIds } from "@/app/actions";
 import QuestionCard from "@/components/QuestionCard";
 
 export async function generateMetadata({
@@ -12,14 +13,14 @@ export async function generateMetadata({
   params: { id: string };
 }): Promise<Metadata> {
   const assignmentId = params.id?.trim();
-  if (!assignmentId) return { title: "Assignment · Tutormigo" };
+  if (!assignmentId) return { title: "Assignment · NeoPrep" };
 
   try {
     const assignment = await getAssignmentForPractice(assignmentId);
-    if (!assignment) return { title: "Assignment · Tutormigo" };
-    return { title: `${assignment.title} · Tutormigo` };
+    if (!assignment) return { title: "Assignment · NeoPrep" };
+    return { title: `${assignment.title} · NeoPrep` };
   } catch {
-    return { title: "Assignment · Tutormigo" };
+    return { title: "Assignment · NeoPrep" };
   }
 }
 
@@ -69,6 +70,8 @@ export default async function AssignmentPracticePage({
     initialHistoryIndex = assignment.questions.length - 1;
   }
 
+  const bookmarkedIds = await getBookmarkedQuestionIds();
+
   return (
     <div className="h-full min-h-0">
       <QuestionCard
@@ -81,6 +84,7 @@ export default async function AssignmentPracticePage({
         sessionExitLabel="Back to Assignments"
         initialSessionResults={initialSessionResults}
         initialHistoryIndex={initialHistoryIndex}
+        initialBookmarkedIds={bookmarkedIds}
       />
     </div>
   );
