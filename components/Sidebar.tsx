@@ -229,7 +229,7 @@ export default function Sidebar({
     });
     studentSections.find((section) => section.title === "PRACTICE")?.items.push({
       href: "/sessions",
-      label: "Join Classes",
+      label: "Weekly Classes",
       icon: <SessionsIcon />,
     });
   }
