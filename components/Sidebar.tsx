@@ -227,7 +227,7 @@ export default function Sidebar({
         items: [
           {
             href: "/assignments",
-            label: "Assignments",
+            label: "Roadmap",
             icon: <AssignmentsIcon />,
           },
           {
@@ -311,11 +311,6 @@ export default function Sidebar({
             <p className="mb-1.5 px-3 text-[11px] font-semibold tracking-[0.08em] text-white/50">
               {section.title}
             </p>
-            {section.title === "BOOTCAMP" && bootcampName && (
-              <p className="mb-1.5 truncate px-3 font-sans text-xs text-white/75">
-                {bootcampName}
-              </p>
-            )}
             <div className="space-y-0.5">
               {section.items.map((item) => (
                 <Link

@@ -9,7 +9,7 @@ import DashboardPageShell from "@/components/DashboardPageShell";
 import PageHeader from "@/components/PageHeader";
 
 export const metadata: Metadata = {
-  title: "Assignments · Tutormigo",
+  title: "Roadmap · Tutormigo",
 };
 
 function formatDate(iso: string | null) {
@@ -66,13 +66,13 @@ export default async function AssignmentsPage() {
 
   return (
     <DashboardPageShell>
-      <PageHeader title="Assignments" />
+      <PageHeader title="Roadmap" />
 
       {assignments.length === 0 ? (
         <div className="arc-card mt-8 px-6 py-8 text-center">
-          <p className="arc-card-label">Assignments</p>
+          <p className="arc-card-label">Roadmap</p>
           <p className="mt-2 font-sans text-base font-normal text-arc-heading">
-            No assignments yet.
+            Your roadmap will appear here soon.
           </p>
         </div>
       ) : (
@@ -105,7 +105,7 @@ export default async function AssignmentsPage() {
                 {/* What this is */}
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <p className="arc-card-label">Assignment</p>
+                    <p className="arc-card-label">Focus Set</p>
                     {locked ? (
                       <span
                         className="inline-flex text-[#8F8F98]"

@@ -13,14 +13,14 @@ export async function generateMetadata({
   params: { id: string };
 }): Promise<Metadata> {
   const assignmentId = params.id?.trim();
-  if (!assignmentId) return { title: "Assignment · Tutormigo" };
+  if (!assignmentId) return { title: "Roadmap · Tutormigo" };
 
   try {
     const assignment = await getAssignmentForPractice(assignmentId);
-    if (!assignment) return { title: "Assignment · Tutormigo" };
+    if (!assignment) return { title: "Roadmap · Tutormigo" };
     return { title: `${assignment.title} · Tutormigo` };
   } catch {
-    return { title: "Assignment · Tutormigo" };
+    return { title: "Roadmap · Tutormigo" };
   }
 }
 
@@ -42,7 +42,7 @@ export default async function AssignmentPracticePage({
     return (
       <div className="flex h-full items-center justify-center px-8">
         <p className="font-sans text-sm text-arc-muted">
-          This assignment has no questions yet.
+          This Focus Set has no questions yet.
         </p>
       </div>
     );
@@ -81,7 +81,7 @@ export default async function AssignmentPracticePage({
         sessionLength={assignment.questions.length}
         hideFilters
         sessionExitHref="/assignments"
-        sessionExitLabel="Back to Assignments"
+        sessionExitLabel="Back to Roadmap"
         initialSessionResults={initialSessionResults}
         initialHistoryIndex={initialHistoryIndex}
         initialBookmarkedIds={bookmarkedIds}
