@@ -29,7 +29,7 @@ body {
   }
 
   .arc-section-label {
-    @apply font-sans text-base font-normal sm:text-lg;
+    @apply font-sans text-sm font-normal;
     color: #8f8f98;
   }
 
