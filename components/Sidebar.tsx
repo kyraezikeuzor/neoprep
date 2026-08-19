@@ -168,7 +168,7 @@ const BASE_SECTIONS: { title: string; items: NavItem[] }[] = [
 ];
 
 function navLinkClass(active: boolean) {
-  return `flex min-h-11 items-center gap-2.5 rounded-lg px-3 py-2.5 text-[15px] font-medium transition ${
+  return `flex min-h-10 items-center gap-2.5 rounded-lg px-2.5 py-2 text-[15px] font-medium transition ${
     active
       ? "bg-white/20 text-white"
       : "text-white/70 hover:bg-white/10 hover:text-white/90"
