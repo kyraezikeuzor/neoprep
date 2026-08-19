@@ -149,6 +149,10 @@ const BASE_SECTIONS: { title: string; items: NavItem[] }[] = [
     ],
   },
   {
+    title: "LEARN",
+    items: [],
+  },
+  {
     title: "COMMUNITY",
     items: [
       { href: "/leaderboard", label: "Leaderboard", icon: <LeaderboardIcon /> },
@@ -232,14 +236,14 @@ export default function Sidebar({
       label: "Study Roadmap",
       icon: <AssignmentsIcon />,
     });
-    studentSections.find((section) => section.title === "PRACTICE")?.items.push({
+    studentSections.find((section) => section.title === "LEARN")?.items.push({
       href: "/sessions",
-      label: "Weekly Classes",
+      label: "Sessions",
       icon: <SessionsIcon />,
     });
   }
 
-  let sections = studentSections;
+  let sections = studentSections.filter((section) => section.items.length > 0);
   if (isAdmin) {
     sections = [
       {
