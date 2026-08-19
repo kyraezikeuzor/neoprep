@@ -68,7 +68,7 @@ export default async function AssignmentsPage() {
     ? [
         {
           id: "local-preview-focus-set",
-          title: "Focus Set: Equivalent Expressions",
+          title: "Focus Questions: Equivalent Expressions",
           due_date: null,
           created_at: null,
           start_date: null,
@@ -77,7 +77,7 @@ export default async function AssignmentsPage() {
         },
         {
           id: "local-preview-next-set",
-          title: "Focus Set: Percentages",
+          title: "Focus Questions: Percentages",
           due_date: null,
           created_at: null,
           start_date: "2099-01-01",
@@ -128,7 +128,7 @@ export default async function AssignmentsPage() {
                 {/* What this is */}
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <p className="arc-card-label">Focus Set</p>
+                    <p className="arc-card-label">Focus Questions</p>
                     {locked ? (
                       <span
                         className="inline-flex text-[#8F8F98]"
