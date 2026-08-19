@@ -301,7 +301,7 @@ export default function Sidebar({
           ) : null}
         </div>
       )}
-      <nav className={`flex-1 space-y-6 overflow-y-auto px-3 pb-3 ${hideBrand ? "pt-3" : "mt-4"}`}>
+      <nav className={`flex-1 space-y-4 overflow-y-auto px-3 pb-3 ${hideBrand ? "pt-3" : "mt-4"}`}>
         {sections.map((section) => (
           <div key={section.title}>
             <p className="mb-1.5 px-3 text-[11px] font-semibold tracking-[0.08em] text-white/50">
