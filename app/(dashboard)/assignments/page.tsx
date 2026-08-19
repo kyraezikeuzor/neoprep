@@ -127,7 +127,7 @@ export default async function AssignmentsPage() {
                   <div className="mt-4 h-1.5 max-w-md overflow-hidden rounded-full bg-arc-soft"><div className="h-full rounded-full bg-arc-accent transition-[width]" style={{ width: `${pct}%` }} /></div>
                   <p className="arc-card-hint mt-1.5 text-xs">{completed} of {total} complete</p>
                 </div>
-                {canOpen ? <Link href={currentHref} className="arc-btn-primary min-h-11 shrink-0 px-6 py-2.5">{completed > 0 ? "Continue focus" : "Start focus"}</Link> : <span className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-arc-line bg-arc-soft px-5 py-2.5 font-sans text-sm font-semibold text-[#8F8F98]"><LockIcon className="h-3.5 w-3.5" /> Locked</span>}
+                {canOpen ? <Link href={currentHref} className="arc-btn-primary min-h-11 shrink-0 px-6 py-2.5">{completed > 0 ? "Continue set" : "Start set"}</Link> : <span className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-arc-line bg-arc-soft px-5 py-2.5 font-sans text-sm font-semibold text-[#8F8F98]"><LockIcon className="h-3.5 w-3.5" /> Locked</span>}
               </div>
             </section>
             <section className="arc-card flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
