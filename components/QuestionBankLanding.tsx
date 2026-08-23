@@ -6,6 +6,10 @@ import type { BankOverview } from "@/app/actions";
 import type { SubjectFilter, TierFilter } from "@/lib/subjects";
 import DashboardPageShell from "@/components/DashboardPageShell";
 import PageHeader from "@/components/PageHeader";
+import { typography } from "@/lib/typography";
+import { filterPillClass, SELECTED_FILTER_STYLE } from "@/lib/uiStyles";
+import type { QuestionAccess } from "@/lib/access-policy";
+import UpgradeToProCard from "@/components/billing/UpgradeToProCard";
 
 const SUBJECT_OPTIONS: { value: SubjectFilter; label: string }[] = [
   { value: "all", label: "All" },
@@ -35,12 +39,6 @@ function LightningIcon() {
   );
 }
 
-function toggleClass(selected: boolean) {
-  return selected
-    ? "min-h-11 rounded-xl border border-arc-accent bg-arc-accentSoft px-4 py-2.5 font-sans text-sm font-medium text-arc-accent transition"
-    : "min-h-11 rounded-xl border border-arc-line bg-transparent px-4 py-2.5 font-sans text-sm font-medium text-arc-heading transition hover:bg-arc-soft";
-}
-
 function OptionRow({
   label,
   children,
@@ -59,9 +57,11 @@ function OptionRow({
 export default function QuestionBankLanding({
   overview,
   streak,
+  access,
 }: {
   overview: BankOverview;
   streak: number;
+  access: QuestionAccess;
 }) {
   const [subject, setSubject] = useState<SubjectFilter>("all");
   const [tier, setTier] = useState<TierFilter>("all");
@@ -83,19 +83,23 @@ export default function QuestionBankLanding({
   }, [subject, tier, count]);
 
   const streakHint = streak > 0 ? "Keep it going" : "Start practicing to begin";
+  const requestedCount = access.isPro
+    ? count
+    : Math.min(count, access.remainingQuestions ?? 0);
+  const limitReached = !access.canAccessNewQuestion;
 
   return (
     <DashboardPageShell>
       <PageHeader title="Question Bank" />
 
-      <div className="mt-6 rounded-2xl border-2 border-arc-line bg-white px-5 py-5 sm:px-6">
+      <div className="hidden mt-6 rounded-2xl border-2 border-arc-line bg-white px-5 py-5 sm:px-6">
         <div className="flex items-center gap-2.5">
           <LightningIcon />
-          <h2 className="font-sans text-base font-medium text-arc-heading sm:text-lg">
+          <h2 className={typography.cardTitle}>
             What is Question Bank?
           </h2>
         </div>
-        <p className="mt-2 max-w-3xl font-sans text-sm leading-relaxed text-[#71717A] sm:text-[15px]">
+        <p className={`mt-2 max-w-3xl ${typography.sectionDescription}`}>
           Question Bank is where you practice at your own pace. Pick a subject
           and difficulty, work through questions one at a time, and see the full
           explanation after each answer. Use it to target weak spots between your
@@ -103,12 +107,12 @@ export default function QuestionBankLanding({
         </p>
       </div>
 
-      <div className="arc-card mt-8 grid divide-y divide-arc-line lg:grid-cols-3 lg:divide-x lg:divide-y-0">
+      <div className="arc-card mt-8 grid divide-y divide-arc-line lg:grid-cols-4 lg:divide-x lg:divide-y-0">
         <div className="px-5 py-5 sm:px-6">
-          <p className="font-sans text-[13px] font-normal text-[#8F8F98]">
+          <p className={typography.cardLabel}>
             Completion
           </p>
-          <p className="mt-2 font-sans text-2xl font-normal tabular-nums leading-none tracking-tight text-arc-heading">
+          <p className={`mt-2 ${typography.cardValue}`}>
             {completionPct}%
           </p>
           <p className="arc-card-hint mt-2">
@@ -117,25 +121,43 @@ export default function QuestionBankLanding({
         </div>
 
         <div className="px-5 py-5 sm:px-6">
-          <p className="font-sans text-[13px] font-normal text-[#8F8F98]">
+          <p className={typography.cardLabel}>
             Accuracy
           </p>
-          <p className="mt-2 font-sans text-2xl font-normal tabular-nums leading-none tracking-tight text-arc-heading">
+          <p className={`mt-2 ${typography.cardValue}`}>
             {overview.accuracy}%
           </p>
           <p className="arc-card-hint mt-2">Across all attempts</p>
         </div>
 
         <div className="px-5 py-5 sm:px-6">
-          <p className="font-sans text-[13px] font-normal text-[#8F8F98]">
+          <p className={typography.cardLabel}>
             Streak
           </p>
-          <p className="mt-2 font-sans text-2xl font-normal tabular-nums leading-none tracking-tight text-arc-heading">
+          <p className={`mt-2 ${typography.cardValue}`}>
             {streak}
           </p>
           <p className="arc-card-hint mt-2">{streakHint}</p>
         </div>
+
+        <div className="px-5 py-5 sm:px-6">
+          <p className={typography.cardLabel}>Current plan</p>
+          <p className={`mt-2 ${typography.cardValue}`}>{access.planLabel}</p>
+          <p className="arc-card-hint mt-2">
+            {access.isPro
+              ? "Full question bank access"
+              : `${access.uniqueQuestionsUsed} of ${access.questionLimit} questions used`}
+          </p>
+        </div>
       </div>
+
+      {!access.isPro ? (
+        <UpgradeToProCard
+          className="mt-4"
+          usedQuestions={access.uniqueQuestionsUsed}
+          questionLimit={access.questionLimit}
+        />
+      ) : null}
 
       <div className="arc-card mt-4 divide-y divide-arc-line">
         <OptionRow label="Subject">
@@ -144,7 +166,8 @@ export default function QuestionBankLanding({
               key={o.value}
               type="button"
               onClick={() => setSubject(o.value)}
-              className={toggleClass(subject === o.value)}
+              className={filterPillClass(subject === o.value)}
+              style={subject === o.value ? SELECTED_FILTER_STYLE : undefined}
               aria-pressed={subject === o.value}
             >
               {o.label}
@@ -158,7 +181,8 @@ export default function QuestionBankLanding({
               key={String(o.value)}
               type="button"
               onClick={() => setTier(o.value)}
-              className={toggleClass(tier === o.value)}
+              className={filterPillClass(tier === o.value)}
+              style={tier === o.value ? SELECTED_FILTER_STYLE : undefined}
               aria-pressed={tier === o.value}
             >
               {o.label}
@@ -172,7 +196,8 @@ export default function QuestionBankLanding({
               key={n}
               type="button"
               onClick={() => setCount(n)}
-              className={toggleClass(count === n)}
+              className={filterPillClass(count === n)}
+              style={count === n ? SELECTED_FILTER_STYLE : undefined}
               aria-pressed={count === n}
             >
               {n}
@@ -181,9 +206,30 @@ export default function QuestionBankLanding({
         </OptionRow>
 
         <div className="px-5 py-5 sm:px-6">
-          <Link href={practiceHref} className="arc-btn-primary w-full py-3 text-base">
-            Start practicing
-          </Link>
+          {limitReached ? (
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="font-sans text-sm text-arc-muted">
+                You have used all 100 questions included with Free.
+              </p>
+              <Link
+                href="/pricing"
+                className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-full bg-[#EC4899] px-6 py-3 font-sans text-base font-semibold text-[#FDE7F4] transition hover:bg-[#DB2777]"
+              >
+                Upgrade to Pro
+              </Link>
+            </div>
+          ) : (
+            <div>
+              <Link href={practiceHref} className="arc-btn-primary w-full py-3 text-base">
+                Start practicing
+              </Link>
+              {!access.isPro && requestedCount < count ? (
+                <p className="mt-2 text-center font-sans text-xs text-arc-muted">
+                  This session will include your {requestedCount} remaining free questions.
+                </p>
+              ) : null}
+            </div>
+          )}
         </div>
       </div>
     </DashboardPageShell>

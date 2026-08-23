@@ -176,7 +176,7 @@ export default function ReportIssueModal({
                 type="button"
                 onClick={onClose}
                 disabled={submitting}
-                className="rounded-lg border border-arc-line bg-white px-4 py-2 font-sans text-sm font-semibold text-arc-ink transition hover:bg-arc-soft disabled:opacity-50"
+                className="arc-btn-secondary px-4 py-2 disabled:opacity-50"
               >
                 Cancel
               </button>

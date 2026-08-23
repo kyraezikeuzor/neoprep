@@ -7,6 +7,7 @@ import { getRandomQuestion, submitAttempt, toggleBookmark, type Question } from 
 import type { SubjectFilter, TierFilter } from "@/lib/subjects";
 import { MATH_DOMAINS } from "@/lib/subjects";
 import { splitLeadingEquations } from "@/lib/mathText";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import DesmosCalculatorPanel, { CalculatorButton } from "./DesmosCalculator";
 import HighlightsNotesPanel, {
@@ -187,6 +188,7 @@ export default function QuestionCard({
   initialSessionResults,
   initialHistoryIndex = 0,
   initialBookmarkedIds,
+  accessLimitReached = false,
 }: {
   initialQuestion: Question | null;
   /** Tighter top padding when nested (e.g. Question Search card) */
@@ -205,6 +207,8 @@ export default function QuestionCard({
   initialHistoryIndex?: number;
   /** Question IDs already in the bookmarks table for this student. */
   initialBookmarkedIds?: string[];
+  /** True when a Free student has exhausted the unique-question allowance. */
+  accessLimitReached?: boolean;
 }) {
   const router = useRouter();
   const { setPracticeActive } = usePracticeSession();
@@ -257,6 +261,7 @@ export default function QuestionCard({
   const [eliminated, setEliminated] = useState<Set<string>>(() => new Set());
   const [selectPulse, setSelectPulse] = useState<{ letter: string; n: number } | null>(null);
   const [navigatorOpen, setNavigatorOpen] = useState(false);
+  const [accessError, setAccessError] = useState("");
   const passageRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const qbPrefetchDone = useRef(false);
@@ -306,6 +311,7 @@ export default function QuestionCard({
       while (collected.length < effectiveSessionLength && !cancelled) {
         const next = await getRandomQuestion({
           excludeId: collected[collected.length - 1]?.question_id,
+          excludeIds: [...seen],
           tier: selectedTier,
           subject: selectedSubject,
         });
@@ -431,6 +437,7 @@ export default function QuestionCard({
     setIsCorrect(null);
     setShowExplanation(false);
     setSelectPulse(null);
+    setAccessError("");
   }
 
   function restoreOrResetForQuestion(q: Question) {
@@ -520,6 +527,7 @@ export default function QuestionCard({
     }
     const next = await getRandomQuestion({
       excludeId,
+      excludeIds: history.map((item) => item.question_id),
       tier: selectedTier,
       subject: selectedSubject,
     });
@@ -536,6 +544,8 @@ export default function QuestionCard({
     }
 
     const correct = isCorrectAnswer(selected, question.correct_answer);
+    const previousResult = sessionResults[question.question_id];
+    setAccessError("");
     setIsCorrect(correct);
     setSubmitted(true);
     if (isFixedSession) {
@@ -556,6 +566,21 @@ export default function QuestionCard({
       router.refresh();
     } catch (err) {
       console.error(err);
+      setSubmitted(false);
+      setIsCorrect(null);
+      if (isFixedSession) {
+        setSessionResults((prev) => {
+          const next = { ...prev };
+          if (previousResult) next[question.question_id] = previousResult;
+          else delete next[question.question_id];
+          return next;
+        });
+      }
+      setAccessError(
+        err instanceof Error
+          ? err.message
+          : "We could not save this answer. Please try again."
+      );
     }
   }
 
@@ -616,6 +641,7 @@ export default function QuestionCard({
     while (collected.length < effectiveSessionLength) {
       const next = await getRandomQuestion({
         excludeId: collected[collected.length - 1]?.question_id,
+        excludeIds: [...seen],
         tier: selectedTier,
         subject: selectedSubject,
       });
@@ -665,6 +691,29 @@ export default function QuestionCard({
   }
 
   if (!question && !sessionComplete) {
+    if (accessLimitReached) {
+      return (
+        <div className="flex h-full min-h-0 items-center justify-center px-8 py-16 text-center">
+          <div className="max-w-md rounded-3xl border-2 border-arc-line bg-white p-8">
+            <p className="font-sans text-sm font-semibold text-arc-accent">Free plan</p>
+            <h1 className="mt-2 font-dm text-3xl font-medium tracking-normal text-arc-ink">
+              You’ve reached 100 questions
+            </h1>
+            <p className="mt-3 font-sans text-sm leading-6 text-arc-muted">
+              Upgrade to Pro for full access to the question bank, or review questions you have already attempted.
+            </p>
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
+              <Link href="/pricing" className="arc-btn-primary px-6 py-3 text-base">
+                Upgrade to Pro
+              </Link>
+              <Link href="/question-bank" className="arc-btn-secondary px-6 py-3 text-base">
+                Back to Question Bank
+              </Link>
+            </div>
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="mx-auto max-w-2xl px-8 py-16 text-center">
         <p className="text-sm text-arc-muted">No questions available right now.</p>
@@ -1002,7 +1051,7 @@ export default function QuestionCard({
             >
               {/* Question header — pill bar with black end caps */}
               <div className="shrink-0 px-4 pt-3 sm:px-6">
-                <div className="flex h-9 w-full items-stretch overflow-hidden rounded-lg bg-[#F9FAFB]">
+                <div className="flex h-9 w-full items-stretch overflow-hidden rounded-lg bg-arc-soft">
                   <span
                     className="flex aspect-square h-full shrink-0 items-center justify-center bg-arc-ink font-sans text-sm font-semibold tabular-nums text-white"
                     aria-label={`Question ${sessionQuestionNumber}`}
@@ -1320,6 +1369,11 @@ export default function QuestionCard({
             </div>
 
             <div className="flex flex-col items-center gap-2 justify-self-center">
+              {accessError ? (
+                <p className="max-w-md text-center font-sans text-xs font-medium text-red-600">
+                  {accessError}
+                </p>
+              ) : null}
               {submitted && (
                 <button
                   type="button"

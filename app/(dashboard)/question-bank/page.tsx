@@ -8,6 +8,7 @@ import {
 } from "@/app/actions";
 import QuestionBankLanding from "@/components/QuestionBankLanding";
 import QuestionCard from "@/components/QuestionCard";
+import { getCurrentQuestionAccess } from "@/lib/question-access.server";
 import type { SubjectFilter, TierFilter } from "@/lib/subjects";
 
 function parseSubject(value: string | undefined): SubjectFilter {
@@ -56,12 +57,17 @@ export default async function QuestionBankPage({
     searchParams?.practice === "1" || Boolean(searchParams?.question?.trim());
 
   if (!inPractice) {
-    const [overview, stats] = await Promise.all([
+    const [overview, stats, access] = await Promise.all([
       getBankOverview(),
       getDashboardShellStats(),
+      getCurrentQuestionAccess(),
     ]);
     return (
-      <QuestionBankLanding overview={overview} streak={stats.streak} />
+      <QuestionBankLanding
+        overview={overview}
+        streak={stats.streak}
+        access={access}
+      />
     );
   }
 
@@ -70,13 +76,19 @@ export default async function QuestionBankPage({
   const count = parseCount(searchParams?.count);
   const requestedId = searchParams?.question?.trim();
 
-  const [question, bookmarkedIds] = await Promise.all([
+  const [access, question, bookmarkedIds] = await Promise.all([
+    getCurrentQuestionAccess(),
     requestedId
       ? (await getQuestionById(requestedId)) ??
         (await getRandomQuestion({ subject, tier }))
       : getRandomQuestion({ subject, tier }),
     getBookmarkedQuestionIds(),
   ]);
+  const allowedSessionLength = requestedId
+    ? 1
+    : access.isPro
+      ? count
+      : Math.min(count, access.remainingQuestions ?? 0);
 
   return (
     <div className="h-full min-h-0">
@@ -84,8 +96,9 @@ export default async function QuestionBankPage({
         initialQuestion={question}
         initialSubject={subject}
         initialTier={tier}
-        sessionLength={count}
+        sessionLength={allowedSessionLength}
         initialBookmarkedIds={bookmarkedIds}
+        accessLimitReached={!question && !access.canAccessNewQuestion}
       />
     </div>
   );
