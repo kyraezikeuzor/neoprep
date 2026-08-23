@@ -1,7 +1,7 @@
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/app/actions/bootcamp";
-import { generateQuestionsForSkill } from "@/lib/question-generation/server";
+import { generateQuestionsForSkill } from "@/lib/generation/server";
 
 type GenerateRouteBody = {
   domain?: unknown;
