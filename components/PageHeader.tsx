@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { textColor, typography } from "@/lib/typography";
 
 export default function PageHeader({
   title,
@@ -12,11 +13,11 @@ export default function PageHeader({
   return (
     <div className="font-sans">
       <div className="flex items-center gap-2.5">
-        {icon && <span className="text-arc-muted">{icon}</span>}
-        <h1 className="text-2xl font-medium tracking-tight text-arc-heading sm:text-3xl">{title}</h1>
+        {icon && <span className={textColor.muted}>{icon}</span>}
+        <h1 className={typography.pageTitle}>{title}</h1>
       </div>
       {description && (
-        <p className="mt-2 max-w-2xl text-base font-normal leading-[1.6] text-arc-muted">
+        <p className={`mt-2 max-w-2xl ${typography.pageDescription}`}>
           {description}
         </p>
       )}
