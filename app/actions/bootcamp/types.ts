@@ -30,7 +30,7 @@ export type AssignmentDetail = {
   id: string;
   title: string;
   due_date: string | null;
-  bootcamp_id: number;
+  bootcamp_id: number | null;
   questions: Question[];
   /** Existing progress for the current student (empty if none). */
   progress: AssignmentProgressEntry[];
@@ -43,8 +43,8 @@ export type AssignmentProgressEntry = {
 };
 
 export type StudentNextSession = {
-  bootcampId: number;
-  bootcampName: string;
+  bootcampId: number | null;
+  bootcampName: string | null;
   dateLabel: string;
   timeLabel: string;
   dayOfWeek: string;
@@ -52,6 +52,7 @@ export type StudentNextSession = {
 
 export type StudentSessionListItem = {
   id: string | null;
+  sessionDate: string | null;
   dateLabel: string;
   timeLabel: string;
   status: string | null;
@@ -59,14 +60,28 @@ export type StudentSessionListItem = {
 };
 
 export type StudentSessionsPageData = {
-  bootcampId: number;
-  bootcampName: string;
+  bootcampId: number | null;
+  bootcampName: string | null;
   next: {
+    sessionId: string | null;
     dateLabel: string;
     timeLabel: string;
     meetingUrl: string | null;
   };
   upcoming: StudentSessionListItem[];
+};
+
+export type RoadmapLiveSession = {
+  id: string | null;
+  title: string;
+  sessionDate: string | null;
+  dateLabel: string;
+  timeLabel: string;
+};
+
+export type RoadmapSessionData = {
+  next: RoadmapLiveSession | null;
+  attended: RoadmapLiveSession[];
 };
 
 export type BookStudentResult =

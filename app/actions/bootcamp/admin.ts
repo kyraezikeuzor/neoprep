@@ -19,6 +19,42 @@ import type {
   BankQuestionOption,
   BootcampSummary,
 } from "@/app/actions/bootcamp/types";
+import { createAdaptiveAssignmentForStudent } from "@/app/actions/bootcamp/adaptive";
+
+export type RoadmapAdminStudent = { student_id: string; full_name: string | null; email: string | null; active_assignment: string | null; completed: number; total: number };
+export type RoadmapAdminClass = { id: string; title: string; starts_at: string; duration_minutes: number; timezone: string; meeting_url: string | null };
+
+export async function listAdminRoadmapStudents(): Promise<RoadmapAdminStudent[]> {
+  await requireAdmin();
+  const admin = createAdminClient();
+  const { data: profiles } = await admin.from("profiles").select("id, full_name, email").eq("role", "student").order("full_name");
+  const { data: assignments } = await admin.from("assignments").select("id, student_id, title, created_at").not("student_id", "is", null).order("created_at", { ascending: false });
+  const ids = (assignments ?? []).map((a) => String(a.id));
+  const [{ data: problems }, { data: attempts }] = ids.length ? await Promise.all([admin.from("problems").select("assignment_id, question_id").in("assignment_id", ids), admin.from("attempts").select("assignment_id, question_id").in("assignment_id", ids)]) : [{ data: [] }, { data: [] }];
+  return (profiles ?? []).map((profile) => {
+    const assignment = (assignments ?? []).find((row) => row.student_id === profile.id);
+    const questionIds = new Set((problems ?? []).filter((row) => String(row.assignment_id) === String(assignment?.id)).map((row) => String(row.question_id)));
+    const done = new Set((attempts ?? []).filter((row) => String(row.assignment_id) === String(assignment?.id) && questionIds.has(String(row.question_id))).map((row) => String(row.question_id)));
+    return { student_id: String(profile.id), full_name: profile.full_name as string | null, email: profile.email as string | null, active_assignment: assignment?.title as string ?? null, completed: done.size, total: questionIds.size };
+  });
+}
+
+export async function generateAdminRoadmapAssignment(studentId: string) {
+  try { const { userId } = await requireAdmin(); const result = await createAdaptiveAssignmentForStudent({ studentId, createdBy: userId }); revalidatePath("/admin/students"); revalidatePath("/assignments"); return { ok: true as const, ...result }; }
+  catch (error) { return { ok: false as const, error: error instanceof Error ? error.message : "Could not create Question Set." }; }
+}
+
+export async function listAdminLiveClasses(): Promise<RoadmapAdminClass[]> {
+  await requireAdmin(); const admin = createAdminClient();
+  const { data, error } = await admin.from("sessions").select("id, title, starts_at, duration_minutes, timezone, meeting_url").not("starts_at", "is", null).order("starts_at");
+  if (error) { console.error("listAdminLiveClasses", error); return []; }
+  return (data ?? []).map((row) => ({ id: String(row.id), title: String(row.title || "Live class"), starts_at: String(row.starts_at), duration_minutes: Number(row.duration_minutes || 60), timezone: String(row.timezone || "America/Chicago"), meeting_url: row.meeting_url as string | null }));
+}
+
+export async function createAdminLiveClass(params: { title: string; startsAt: string; durationMinutes: number; timezone: string; meetingUrl?: string }) {
+  try { await requireAdmin(); const title = params.title.trim(); if (!title || !params.startsAt) return { ok: false as const, error: "Title and start time are required." }; const admin = createAdminClient(); const { error } = await admin.from("sessions").insert({ title, starts_at: new Date(params.startsAt).toISOString(), duration_minutes: Math.max(15, Math.min(480, params.durationMinutes || 60)), timezone: params.timezone || "America/Chicago", meeting_url: params.meetingUrl?.trim() || null, bootcamp_id: null, session_date: null }); if (error) return { ok: false as const, error: error.message }; revalidatePath("/admin/classes"); revalidatePath("/sessions"); revalidatePath("/assignments"); return { ok: true as const }; }
+  catch (error) { return { ok: false as const, error: error instanceof Error ? error.message : "Could not create class." }; }
+}
 
 function generateJoinCode(length = 8): string {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";

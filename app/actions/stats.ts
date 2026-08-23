@@ -343,6 +343,9 @@ export type DashboardStats = {
 export type DashboardShellStats = {
   xpTotal: number;
   streak: number;
+  recentActiveDates: string[];
+  /** Every date with question activity in the current calendar month. */
+  monthlyActiveDates: string[];
 };
 
 function toLocalDateKey(d: Date): string {
@@ -381,7 +384,14 @@ function computeStreak(dateKeys: Set<string>): number {
 /** The only live attempt data needed by the persistent dashboard shell. */
 export const getDashboardShellStats = cache(async (): Promise<DashboardShellStats> => {
   const { supabase, user } = await getAuthedUser();
-  if (!user) return { xpTotal: 0, streak: 0 };
+  if (!user) {
+    return {
+      xpTotal: 0,
+      streak: 0,
+      recentActiveDates: [],
+      monthlyActiveDates: [],
+    };
+  }
 
   const { data: attempts, error } = await supabase
     .from("attempts")
@@ -390,7 +400,12 @@ export const getDashboardShellStats = cache(async (): Promise<DashboardShellStat
 
   if (error) {
     console.error("getDashboardShellStats attempts error:", error);
-    return { xpTotal: 0, streak: 0 };
+    return {
+      xpTotal: 0,
+      streak: 0,
+      recentActiveDates: [],
+      monthlyActiveDates: [],
+    };
   }
 
   const rows = attempts ?? [];
@@ -434,7 +449,22 @@ export const getDashboardShellStats = cache(async (): Promise<DashboardShellStat
     if (attemptedAt) dateKeys.add(toLocalDateKey(new Date(attemptedAt)));
   }
 
-  return { xpTotal, streak: computeStreak(dateKeys) };
+  const today = toLocalDateKey(new Date());
+  const recentActiveDates = Array.from({ length: 7 }, (_, index) =>
+    shiftLocalDateKey(today, index - 6)
+  ).filter((dateKey) => dateKeys.has(dateKey));
+
+  const currentMonthPrefix = today.slice(0, 7);
+  const monthlyActiveDates = [...dateKeys]
+    .filter((dateKey) => dateKey.startsWith(currentMonthPrefix))
+    .sort();
+
+  return {
+    xpTotal,
+    streak: computeStreak(dateKeys),
+    recentActiveDates,
+    monthlyActiveDates,
+  };
 });
 
 /** Aggregate attempt + profile stats for the student dashboard cards. */

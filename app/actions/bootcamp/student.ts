@@ -22,9 +22,12 @@ import type {
   AssignmentProgressEntry,
   BookStudentResult,
   StudentNextSession,
+  RoadmapSessionData,
   StudentSessionListItem,
   StudentSessionsPageData,
 } from "@/app/actions/bootcamp/types";
+import { getLiveSessionMeta } from "@/lib/live-sessions";
+import { createAdaptiveAssignmentForStudent } from "@/app/actions/bootcamp/adaptive";
 
 /**
  * Next live session for the student's active enrollment.
@@ -135,6 +138,33 @@ function formatSessionDateLabel(
  * Meeting URL only when sessions.cal_event_id resolves to a real https link.
  */
 export async function getStudentSessionsPageData(): Promise<StudentSessionsPageData | null> {
+  // Standalone classes are the source of truth for the Roadmap. Keep the
+  // legacy bootcamp path below as a compatibility fallback for existing rows.
+  const standaloneAdmin = createAdminClient();
+  const { data: standaloneRows, error: standaloneError } = await standaloneAdmin
+    .from("sessions")
+    .select("id, title, starts_at, meeting_url, duration_minutes, timezone, status")
+    .not("starts_at", "is", null)
+    .gte("starts_at", new Date().toISOString())
+    .order("starts_at", { ascending: true });
+  if (standaloneError) console.error("getStudentSessionsPageData standalone error:", standaloneError);
+  if (standaloneRows?.length) {
+    const format = (row: Record<string, unknown>) => {
+      const at = new Date(String(row.starts_at));
+      const timezone = String(row.timezone || "America/Chicago");
+      return {
+        id: String(row.id),
+        sessionDate: at.toISOString().slice(0, 10),
+        dateLabel: new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric", timeZone: timezone }).format(at),
+        timeLabel: new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", timeZone: timezone, timeZoneName: "short" }).format(at),
+        status: (row.status as string | null) ?? null,
+        hasMeetingLink: Boolean(row.meeting_url),
+      };
+    };
+    const upcoming = standaloneRows.map((row) => format(row as Record<string, unknown>));
+    const first = standaloneRows[0] as Record<string, unknown>;
+    return { bootcampId: null, bootcampName: null, next: { sessionId: String(first.id), dateLabel: upcoming[0]!.dateLabel, timeLabel: upcoming[0]!.timeLabel, meetingUrl: typeof first.meeting_url === "string" ? first.meeting_url : null }, upcoming };
+  }
   const next = await getStudentNextSession();
   if (!next) return null;
 
@@ -177,10 +207,21 @@ export async function getStudentSessionsPageData(): Promise<StudentSessionsPageD
     return `${parts.year}-${String(parts.month).padStart(2, "0")}-${String(parts.day).padStart(2, "0")}`;
   })();
 
+  // A session earlier today can still be returned by the date-only query after
+  // computeNextSession has already advanced to next week. Keep the roadmap and
+  // Live Classes page anchored to the computed next occurrence.
+  const effectiveRows = nextDateKey
+    ? rows.filter(
+        (row) => String(row.session_date).slice(0, 10) >= nextDateKey
+      )
+    : rows;
+
   const matched =
     (nextDateKey &&
-      rows.find((row) => String(row.session_date) === nextDateKey)) ||
-    rows[0] ||
+      effectiveRows.find(
+        (row) => String(row.session_date).slice(0, 10) === nextDateKey
+      )) ||
+    effectiveRows[0] ||
     null;
 
   let meetingUrl: string | null = null;
@@ -191,8 +232,8 @@ export async function getStudentSessionsPageData(): Promise<StudentSessionsPageD
   }
 
   const upcoming: StudentSessionListItem[] = [];
-  if (rows.length) {
-    for (const row of rows) {
+  if (effectiveRows.length) {
+    for (const row of effectiveRows) {
       const formatted = formatSessionDateLabel(
         String(row.session_date),
         timezone,
@@ -202,6 +243,7 @@ export async function getStudentSessionsPageData(): Promise<StudentSessionsPageD
 
       upcoming.push({
         id: String(row.id),
+        sessionDate: String(row.session_date).slice(0, 10),
         dateLabel: formatted.dateLabel,
         timeLabel: formatted.timeLabel || next.timeLabel,
         status: (row.status as string | null) ?? null,
@@ -213,6 +255,7 @@ export async function getStudentSessionsPageData(): Promise<StudentSessionsPageD
   } else {
     upcoming.push({
       id: null,
+      sessionDate: null,
       dateLabel: next.dateLabel,
       timeLabel: next.timeLabel,
       status: null,
@@ -224,11 +267,70 @@ export async function getStudentSessionsPageData(): Promise<StudentSessionsPageD
     bootcampId: next.bootcampId,
     bootcampName: next.bootcampName,
     next: {
+      sessionId: matched?.id != null ? String(matched.id) : null,
       dateLabel: next.dateLabel,
       timeLabel: next.timeLabel,
       meetingUrl,
     },
     upcoming,
+  };
+}
+
+export async function getStudentRoadmapSessions(): Promise<RoadmapSessionData> {
+  const { user } = await getAuthedUser();
+  if (!user) return { next: null, attended: [] };
+
+  const pageData = await getStudentSessionsPageData();
+  const nextIndex = pageData
+    ? Math.max(
+        0,
+        pageData.upcoming.findIndex(
+          (session) => session.id === pageData.next.sessionId
+        )
+      )
+    : -1;
+  const upcoming = pageData?.upcoming[nextIndex] ?? null;
+  const nextSession = upcoming
+    ? {
+        id: upcoming.id,
+        title: getLiveSessionMeta(nextIndex).title,
+        sessionDate: upcoming.sessionDate,
+        dateLabel: upcoming.dateLabel,
+        timeLabel: upcoming.timeLabel,
+      }
+    : null;
+
+  const admin = createAdminClient();
+  const today = new Date().toISOString().slice(0, 10);
+  const { data: attendanceRows, error } = await admin
+    .from("live_session_attendance")
+    .select("session_id, session_date, session_title, time_label")
+    .eq("student_id", user.id)
+    .in("status", ["joined", "attended"])
+    .lt("session_date", today)
+    .order("session_date", { ascending: false })
+    .limit(8);
+
+  if (error && error.code !== "42P01") {
+    console.error("getStudentRoadmapSessions attendance error:", error);
+  }
+
+  return {
+    next: nextSession,
+    attended: (attendanceRows ?? []).map((row) => {
+      const formatted = formatSessionDateLabel(
+        String(row.session_date),
+        "America/Chicago",
+        String(row.time_label ?? "")
+      );
+      return {
+        id: String(row.session_id),
+        title: String(row.session_title || "Live class"),
+        sessionDate: String(row.session_date).slice(0, 10),
+        dateLabel: formatted?.dateLabel ?? "Live class",
+        timeLabel: formatted?.timeLabel ?? String(row.session_date),
+      };
+    }),
   };
 }
 
@@ -591,11 +693,9 @@ export async function enrollStudentIntoBootcamp(params: {
 }
 
 export async function listStudentAssignments(): Promise<AssignmentListItem[]> {
-  const membership = await getStudentBootcamp();
-  if (!membership) return [];
-
   const { user } = await getAuthedUser();
   if (!user) return [];
+  const membership = await getStudentBootcamp();
 
   const admin = createAdminClient();
   // Prefer start_date when present; fall back without it if the column is missing.
@@ -610,14 +710,14 @@ export async function listStudentAssignments(): Promise<AssignmentListItem[]> {
   const withStart = await admin
     .from("assignments")
     .select("id, title, due_date, created_at, start_date")
-    .eq("bootcamp_id", membership.bootcampId)
+    .or(`student_id.eq.${user.id},bootcamp_id.eq.${membership?.bootcampId ?? -1}`)
     .order("due_date", { ascending: true, nullsFirst: false });
 
   if (withStart.error) {
     const withoutStart = await admin
       .from("assignments")
       .select("id, title, due_date, created_at")
-      .eq("bootcamp_id", membership.bootcampId)
+      .or(`student_id.eq.${user.id},bootcamp_id.eq.${membership?.bootcampId ?? -1}`)
       .order("due_date", { ascending: true, nullsFirst: false });
     if (withoutStart.error) {
       console.error("listStudentAssignments error:", withoutStart.error);
@@ -696,18 +796,16 @@ export async function listStudentAssignments(): Promise<AssignmentListItem[]> {
 export async function getAssignmentForPractice(
   assignmentId: string
 ): Promise<AssignmentDetail | null> {
-  const membership = await getStudentBootcamp();
-  if (!membership) return null;
-
   const { user } = await getAuthedUser();
   if (!user) return null;
+  const membership = await getStudentBootcamp();
 
   const admin = createAdminClient();
   const { data: assignment, error } = await admin
     .from("assignments")
     .select("id, title, due_date, bootcamp_id")
     .eq("id", assignmentId)
-    .eq("bootcamp_id", membership.bootcampId)
+    .or(`student_id.eq.${user.id},bootcamp_id.eq.${membership?.bootcampId ?? -1}`)
     .maybeSingle();
 
   if (error || !assignment) {
@@ -734,7 +832,7 @@ export async function getAssignmentForPractice(
       id: String(assignment.id),
       title: assignment.title as string,
       due_date: (assignment.due_date as string | null) ?? null,
-      bootcamp_id: Number(assignment.bootcamp_id),
+      bootcamp_id: assignment.bootcamp_id == null ? null : Number(assignment.bootcamp_id),
       questions: [],
       progress: [],
     };
@@ -796,7 +894,7 @@ export async function getAssignmentForPractice(
     id: String(assignment.id),
     title: assignment.title as string,
     due_date: (assignment.due_date as string | null) ?? null,
-    bootcamp_id: Number(assignment.bootcamp_id),
+    bootcamp_id: assignment.bootcamp_id == null ? null : Number(assignment.bootcamp_id),
     questions: ordered,
     progress,
   };
@@ -812,15 +910,13 @@ export async function submitAssignmentProgress(params: {
   const { user } = await getAuthedUser();
   if (!user) throw new Error("Not signed in");
 
-  const membership = await getStudentBootcamp();
-  if (!membership) throw new Error("Not in a bootcamp");
-
   const admin = createAdminClient();
+  const membership = await getStudentBootcamp();
   const { data: assignment } = await admin
     .from("assignments")
     .select("id")
     .eq("id", params.assignmentId)
-    .eq("bootcamp_id", membership.bootcampId)
+    .or(`student_id.eq.${user.id},bootcamp_id.eq.${membership?.bootcampId ?? -1}`)
     .maybeSingle();
 
   if (!assignment) throw new Error("Assignment not found");
@@ -843,4 +939,16 @@ export async function submitAssignmentProgress(params: {
 
   revalidatePath("/assignments");
   revalidatePath(`/assignments/${params.assignmentId}`);
+}
+
+export async function generateNextRoadmapAssignment(): Promise<{ ok: true; assignmentId: string; created: boolean } | { ok: false; error: string }> {
+  try {
+    const { user } = await getAuthedUser();
+    if (!user) return { ok: false, error: "You must sign in first." };
+    const result = await createAdaptiveAssignmentForStudent({ studentId: user.id, createdBy: user.id });
+    revalidatePath("/assignments");
+    return { ok: true, ...result };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "Could not create a Question Set." };
+  }
 }
