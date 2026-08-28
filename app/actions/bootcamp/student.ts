@@ -714,10 +714,14 @@ export async function listStudentAssignments(): Promise<AssignmentListItem[]> {
     .order("due_date", { ascending: true, nullsFirst: false });
 
   if (withStart.error) {
+    // Production instances without the standalone Roadmap migration reject an
+    // OR filter containing student_id. Fall back to the original bootcamp
+    // query so valid legacy assignments remain visible.
+    if (!membership) return [];
     const withoutStart = await admin
       .from("assignments")
       .select("id, title, due_date, created_at")
-      .or(`student_id.eq.${user.id},bootcamp_id.eq.${membership?.bootcampId ?? -1}`)
+      .eq("bootcamp_id", membership.bootcampId)
       .order("due_date", { ascending: true, nullsFirst: false });
     if (withoutStart.error) {
       console.error("listStudentAssignments error:", withoutStart.error);
@@ -801,12 +805,23 @@ export async function getAssignmentForPractice(
   const membership = await getStudentBootcamp();
 
   const admin = createAdminClient();
-  const { data: assignment, error } = await admin
+  let { data: assignment, error } = await admin
     .from("assignments")
     .select("id, title, due_date, bootcamp_id")
     .eq("id", assignmentId)
     .or(`student_id.eq.${user.id},bootcamp_id.eq.${membership?.bootcampId ?? -1}`)
     .maybeSingle();
+
+  if (error && membership) {
+    const legacy = await admin
+      .from("assignments")
+      .select("id, title, due_date, bootcamp_id")
+      .eq("id", assignmentId)
+      .eq("bootcamp_id", membership.bootcampId)
+      .maybeSingle();
+    assignment = legacy.data;
+    error = legacy.error;
+  }
 
   if (error || !assignment) {
     console.error("getAssignmentForPractice error:", error);
@@ -912,14 +927,25 @@ export async function submitAssignmentProgress(params: {
 
   const admin = createAdminClient();
   const membership = await getStudentBootcamp();
-  const { data: assignment } = await admin
+  let { data: assignment, error: assignmentError } = await admin
     .from("assignments")
     .select("id")
     .eq("id", params.assignmentId)
     .or(`student_id.eq.${user.id},bootcamp_id.eq.${membership?.bootcampId ?? -1}`)
     .maybeSingle();
 
-  if (!assignment) throw new Error("Assignment not found");
+  if (assignmentError && membership) {
+    const legacy = await admin
+      .from("assignments")
+      .select("id")
+      .eq("id", params.assignmentId)
+      .eq("bootcamp_id", membership.bootcampId)
+      .maybeSingle();
+    assignment = legacy.data;
+    assignmentError = legacy.error;
+  }
+
+  if (assignmentError || !assignment) throw new Error("Assignment not found");
 
   const payload: Record<string, unknown> = {
     user_id: user.id,

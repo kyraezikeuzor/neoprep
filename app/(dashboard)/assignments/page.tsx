@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getDashboardShellStats } from "@/app/actions";
 import {
+  getStudentBootcamp,
   getStudentRoadmapSessions,
   listStudentAssignments,
 } from "@/app/actions/bootcamp";
@@ -22,8 +23,12 @@ export const metadata: Metadata = {
 };
 
 export default async function AssignmentsPage() {
-  const shellStats = await getDashboardShellStats();
-  const previewStudent = isLocalStudentPreview;
+  const [bootcamp, shellStats] = await Promise.all([
+    getStudentBootcamp(),
+    getDashboardShellStats(),
+  ]);
+  // Development preview must never replace a real enrolled student's Roadmap.
+  const previewStudent = !bootcamp && isLocalStudentPreview;
 
   const assignments: AssignmentListItem[] = previewStudent
     ? [
