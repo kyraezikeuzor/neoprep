@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { buildMasteryOverview, type MasteryEvidence, type MasteryOverview } from "@/lib/mastery";
 import { MATH_DOMAINS, READING_DOMAINS } from "@/lib/subjects";
 
 export type TopicProgress = {
@@ -30,6 +31,46 @@ export type BankOverview = {
 };
 
 const ALL_TOPICS = [...MATH_DOMAINS, ...READING_DOMAINS];
+
+export async function getMasteryOverview(): Promise<MasteryOverview> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return buildMasteryOverview([]);
+
+  const { data, error } = await supabase
+    .from("attempts")
+    .select("question_id, is_correct, attempted_at, questions(domain, skill, tier)")
+    .eq("user_id", user.id)
+    .order("attempted_at", { ascending: false });
+
+  if (error) {
+    console.error("getMasteryOverview error:", error);
+    return buildMasteryOverview([]);
+  }
+
+  const evidence = (data ?? []).flatMap((row): MasteryEvidence[] => {
+    const relation = row.questions as
+      | { domain: string | null; skill: string | null; tier: number | null }
+      | { domain: string | null; skill: string | null; tier: number | null }[]
+      | null;
+    const question = Array.isArray(relation) ? relation[0] : relation;
+    if (!row.question_id || !row.attempted_at || !question) return [];
+
+    return [{
+      questionId: row.question_id as string,
+      isCorrect: row.is_correct === true,
+      attemptedAt: row.attempted_at as string,
+      domain: question.domain,
+      skill: question.skill,
+      tier: question.tier == null ? null : Number(question.tier),
+    }];
+  });
+
+  return buildMasteryOverview(evidence);
+}
 
 export async function getBankOverview(): Promise<BankOverview> {
   const supabase = await createClient();

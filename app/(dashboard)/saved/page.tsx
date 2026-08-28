@@ -100,7 +100,7 @@ export default async function SavedPage() {
                           {truncateStem(item.stem)}
                         </p>
                       </div>
-                      <span className="relative z-10 inline-flex shrink-0 items-center justify-center rounded-full border border-arc-line bg-white px-3 py-1 font-sans text-xs font-medium text-[#8F8F98]">
+                      <span className="relative z-10 inline-flex shrink-0 items-center justify-center rounded-full border border-arc-line bg-white px-3 py-1 font-sans text-xs font-medium text-arc-muted">
                         Open
                       </span>
                     </div>

@@ -34,7 +34,7 @@ export default function LeaderboardTable({
             key={entry.student_id}
             className="grid grid-cols-[2.5rem_1fr_auto] items-center gap-2 px-4 py-3.5 sm:grid-cols-[3rem_1fr_auto] sm:gap-3 sm:px-6"
           >
-            <span className="font-sans text-sm tabular-nums text-[#8F8F98]">
+            <span className="font-sans text-sm tabular-nums text-arc-muted">
               {entry.rank}
             </span>
             <span className="font-sans text-base font-normal text-arc-heading">

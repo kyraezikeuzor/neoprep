@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import type { SkillCatalogSection } from "@/lib/question-generation/metadata";
+import type { SkillCatalogSection } from "@/lib/generation/metadata";
 import { MATH_DOMAINS, READING_DOMAINS, type SubjectFilter } from "@/lib/subjects";
 import { listGenerationPatterns } from "@/app/actions/skills";
 

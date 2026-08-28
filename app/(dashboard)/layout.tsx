@@ -1,6 +1,11 @@
 import DashboardShell from "@/components/DashboardShell";
 import { getDashboardShellStats } from "@/app/actions";
-import { getAuthedUser, getProfileRole, getStudentBootcamp } from "@/app/actions/bootcamp/auth";
+import {
+  getAuthedUser,
+  getProfileRole,
+  getStudentBootcamp,
+} from "@/app/actions/bootcamp/auth";
+import { getStudentNextSession } from "@/app/actions/bootcamp";
 import { isLocalStudentPreview } from "@/lib/devPreview";
 
 function getDisplayName(user: {
@@ -20,14 +25,52 @@ function getDisplayName(user: {
   return email || "User";
 }
 
+const SESSION_LABEL_ABBREVIATIONS: Record<string, string> = {
+  Sunday: "Sun",
+  Monday: "Mon",
+  Tuesday: "Tue",
+  Wednesday: "Wed",
+  Thursday: "Thu",
+  Friday: "Fri",
+  Saturday: "Sat",
+  January: "Jan",
+  February: "Feb",
+  March: "Mar",
+  April: "Apr",
+  May: "May",
+  June: "Jun",
+  July: "Jul",
+  August: "Aug",
+  September: "Sep",
+  October: "Oct",
+  November: "Nov",
+  December: "Dec",
+};
+
+function compactSessionLabel(value: string) {
+  return value
+    .replace(
+      /\b(Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|January|February|March|April|May|June|July|August|September|October|November|December)\b/g,
+      (label) => SESSION_LABEL_ABBREVIATIONS[label] ?? label
+    )
+    .replace(/\b(\d{1,2}):00 (?=(?:AM|PM)\b)/g, "$1 ")
+    .replace(/\bCentral(?: Time)?\b/g, "CT");
+}
+
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const [{ user }, shellStats, role, bootcamp] = await Promise.all([
+  const [{ user }, shellStats, role, bootcamp, nextSession] = await Promise.all([
     getAuthedUser(),
     getDashboardShellStats(),
     getProfileRole(),
     getStudentBootcamp(),
+    getStudentNextSession(),
   ]);
   const previewStudent = !user && isLocalStudentPreview;
+  const nextClassLabel = nextSession
+    ? `Next: ${compactSessionLabel(nextSession.dateLabel)} · ${compactSessionLabel(nextSession.timeLabel)}`
+    : previewStudent
+      ? "Next: Sat · 11 AM CT"
+      : "Next live class coming up — open Live Classes";
 
   return (
     <DashboardShell
@@ -36,6 +79,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       userName={user ? getDisplayName(user) : previewStudent ? "Preview Student" : "User"}
       bootcampName={bootcamp?.name ?? (previewStudent ? "preview" : null)}
       isAdmin={role === "admin"}
+      nextClassLabel={nextClassLabel}
     >
       {children}
     </DashboardShell>

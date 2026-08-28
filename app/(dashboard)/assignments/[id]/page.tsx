@@ -13,14 +13,14 @@ export async function generateMetadata({
   params: { id: string };
 }): Promise<Metadata> {
   const assignmentId = params.id?.trim();
-  if (!assignmentId) return { title: "Roadmap · Tutormigo" };
+  if (!assignmentId) return { title: "Study Planner · Tutormigo" };
 
   try {
     const assignment = await getAssignmentForPractice(assignmentId);
-    if (!assignment) return { title: "Roadmap · Tutormigo" };
+    if (!assignment) return { title: "Study Planner · Tutormigo" };
     return { title: `${assignment.title} · Tutormigo` };
   } catch {
-    return { title: "Roadmap · Tutormigo" };
+    return { title: "Study Planner · Tutormigo" };
   }
 }
 
@@ -81,7 +81,7 @@ export default async function AssignmentPracticePage({
         sessionLength={assignment.questions.length}
         hideFilters
         sessionExitHref="/assignments"
-        sessionExitLabel="Back to Roadmap"
+        sessionExitLabel="Back to Study Planner"
         initialSessionResults={initialSessionResults}
         initialHistoryIndex={initialHistoryIndex}
         initialBookmarkedIds={bookmarkedIds}

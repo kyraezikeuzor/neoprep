@@ -12,7 +12,7 @@ import {
   type SkillCatalogSection,
 } from "./metadata.ts";
 
-const PROMPT_DIR = path.join(process.cwd(), "lib", "question-generation");
+const PROMPT_DIR = path.join(process.cwd(), "lib", "generation");
 const ANTHROPIC_VERSION = "2023-06-01";
 
 type PromptAssets = {

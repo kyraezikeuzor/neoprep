@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { typography } from "@/lib/typography";
 
 function HomeIcon() {
   return (
@@ -17,10 +18,11 @@ function HomeIcon() {
 
 function BooksIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0" fill="currentColor" aria-hidden>
-      <path d="M5.2 4.4c-.72 0-1.3.58-1.3 1.3v12.6c0 .72.58 1.3 1.3 1.3h2.05c.72 0 1.3-.58 1.3-1.3V5.7c0-.72-.58-1.3-1.3-1.3H5.2z" />
-      <path d="M9.55 4.55c-.7-.18-1.4.35-1.4 1.08v12.55c0 .58.4 1.08.97 1.22l4.55 1.15c.72.18 1.43-.36 1.43-1.1V6.9c0-.58-.4-1.08-.97-1.22l-4.58-1.13z" />
-      <path d="M15.35 5.85c-.55-.35-1.25.05-1.25.7v11.95c0 .5.3.95.76 1.15l3.95 1.7c.78.34 1.64-.23 1.64-1.08V8.35c0-.42-.23-.8-.6-1.02l-4.5-1.48z" />
+    <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+      <rect x="6" y="4" width="14" height="16" rx="2.25" />
+      <path d="M6 7H5.25A2.25 2.25 0 003 9.25v8.5A2.25 2.25 0 005.25 20H8" />
+      <path strokeLinecap="round" d="M11 9.4a2.15 2.15 0 114.3 0c0 1.65-2.15 1.8-2.15 3.15" />
+      <circle cx="13.15" cy="15.8" r=".75" fill="currentColor" stroke="none" />
     </svg>
   );
 }
@@ -56,7 +58,35 @@ function SavedIcon() {
 function AssignmentsIcon() {
   return (
     <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0" fill="currentColor" aria-hidden>
-      <path d="M7 3.5A1.5 1.5 0 005.5 5v14A1.5 1.5 0 007 20.5h10a1.5 1.5 0 001.5-1.5V8.2L13.8 3.5H7zm6 1.2l3.8 3.8H13V4.7zM8.5 12h7v1.5h-7V12zm0 3.5h7V17h-7v-1.5z" />
+      <path d="M8.25 2.5a.9.9 0 01.9.9V4.5h5.7V3.4a.9.9 0 111.8 0V4.5h.6A2.75 2.75 0 0120 7.25v11A2.75 2.75 0 0117.25 21H6.75A2.75 2.75 0 014 18.25v-11A2.75 2.75 0 016.75 4.5h.6V3.4a.9.9 0 01.9-.9zM5.8 9.4v8.85c0 .52.43.95.95.95h10.5c.52 0 .95-.43.95-.95V9.4H5.8zm2.7 2.15h2.1v2.1h-2.1v-2.1zm4.35 0h2.1v2.1h-2.1v-2.1z" />
+    </svg>
+  );
+}
+
+function PracticeTestsIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+      <rect x="5" y="4.5" width="14" height="16" rx="2.25" />
+      <path d="M9 3.5h6v3H9z" fill="white" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M8.5 11.5l1.4 1.4 2.4-2.6M14.5 11.5h2M8.5 16h8" />
+    </svg>
+  );
+}
+
+function VocabularyIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+      <rect x="3.5" y="4" width="17" height="16" rx="3" />
+      <path strokeLinecap="round" d="M7.3 16l2.6-7 2.6 7M8.2 13.7h3.4" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M14.2 12.2c.7-.55 2.6-.65 2.6.8v3M16.8 14.15c-2.8-.45-3.2 2.2-1 2.2.5 0 .85-.15 1-.35" />
+    </svg>
+  );
+}
+
+function UpgradeIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0" fill="currentColor" aria-hidden>
+      <path d="M12 3.2l1.55 4.05 4.3.35-3.28 2.78 1 4.18L12 12.7 8.43 14.56l1-4.18-3.28-2.78 4.3-.35L12 3.2zm-6.2 14.05h12.4v1.7H5.8v-1.7z" />
     </svg>
   );
 }
@@ -64,7 +94,8 @@ function AssignmentsIcon() {
 function SessionsIcon() {
   return (
     <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0" fill="currentColor" aria-hidden>
-      <path d="M7 3.75A1.75 1.75 0 005.25 5.5v13A1.75 1.75 0 007 20.25h10A1.75 1.75 0 0018.75 18.5v-13A1.75 1.75 0 0017 3.75H7zm.75 3.5h8.5v1.5h-8.5V7.25zm0 3.5h8.5V12h-8.5v-1.25zm0 3.5h5.5v1.5h-5.5V14.25z" />
+      <path d="M4.75 5.5A2.25 2.25 0 002.5 7.75v8.5A2.25 2.25 0 004.75 18.5h9.1a2.25 2.25 0 002.25-2.25v-8.5A2.25 2.25 0 0013.85 5.5H4.75zM10.2 9.15l3.35 2.2a.9.9 0 010 1.5l-3.35 2.2a.9.9 0 01-1.4-.75v-4.4a.9.9 0 011.4-.75z" />
+      <path d="M18.35 8.4c.62.52 1 1.28 1 2.1v3c0 .82-.38 1.58-1 2.1l1.4 1.4A.75.75 0 0021 16.45V7.55a.75.75 0 00-1.25-.55l-1.4 1.4z" />
     </svg>
   );
 }
@@ -111,8 +142,9 @@ function FeedbackIcon() {
 
 function LeaderboardIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0" fill="currentColor" aria-hidden>
-      <path d="M7 4h10v3h3v2.2c0 2.4-1.6 4.4-3.8 5.1L15.5 20h-7l-.7-5.7C5.6 13.6 4 11.6 4 9.2V7h3V4zm2 2v1H6v2.2c0 1.6 1 3 2.5 3.5l.4.1.5 4.2h5.2l.5-4.2.4-.1C16 12.2 17 10.8 17 9.2V7h-3V6H9z" />
+    <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3.5 20.25h17M5 20v-5.5h4V20M10 20V9.5h4V20M15 20v-8h4v8" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 3.25l.7 1.45 1.6.23-1.15 1.12.27 1.58L12 6.88l-1.42.75.27-1.58L9.7 4.93l1.6-.23.7-1.45z" />
     </svg>
   );
 }
@@ -133,24 +165,75 @@ function CloseIcon() {
   );
 }
 
-type NavItem = { href: string; label: string; icon: ReactNode; match?: "exact" | "prefix" };
+function ExamSelector() {
+  return (
+    <div className="shrink-0 px-3 pb-2 pt-1">
+      <div
+        className="flex h-11 items-center rounded-full bg-arc-soft p-1"
+        aria-label="Exam selection"
+      >
+        <button
+          type="button"
+          aria-pressed="true"
+          className="flex h-9 flex-1 items-center justify-center rounded-full bg-white font-sans text-sm font-medium text-[#0B0B0B] shadow-sm"
+        >
+          SAT
+        </button>
+
+        {(["ACT", "AP"] as const).map((exam) => (
+          <div key={exam} className="group relative flex h-9 flex-1">
+            <button
+              type="button"
+              disabled
+              aria-label={`${exam} prep is coming soon`}
+              className="flex h-9 w-full cursor-not-allowed items-center justify-center rounded-full font-sans text-sm font-medium text-[#747474]/65"
+            >
+              {exam}
+            </button>
+            <div
+              role="tooltip"
+              className={`pointer-events-none absolute top-[calc(100%+0.45rem)] z-40 w-40 rounded-xl border border-arc-line bg-white px-3 py-2 text-center font-sans text-xs font-normal leading-relaxed text-[#525252] opacity-0 shadow-[0_8px_24px_rgba(24,24,27,0.10)] transition duration-150 group-hover:opacity-100 ${
+                exam === "AP" ? "right-0" : "left-1/2 -translate-x-1/2"
+              }`}
+            >
+              {exam} prep is coming soon.
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+type NavItem = {
+  href: string;
+  label: string;
+  icon: ReactNode;
+  match?: "exact" | "prefix";
+  badge?: string;
+};
 
 const BASE_SECTIONS: { title: string; items: NavItem[] }[] = [
   {
     title: "HOME",
     items: [
       { href: "/dashboard", label: "Dashboard", icon: <HomeIcon />, match: "exact" },
+      { href: "/assignments", label: "Study Planner", icon: <AssignmentsIcon /> },
     ],
   },
   {
     title: "PRACTICE",
     items: [
       { href: "/question-bank", label: "Question Bank", icon: <BooksIcon /> },
+      { href: "/practice-tests", label: "Practice Tests", icon: <PracticeTestsIcon /> },
+      { href: "/vocabulary", label: "Vocabulary", icon: <VocabularyIcon />, badge: "New" },
     ],
   },
   {
     title: "LEARN",
-    items: [],
+    items: [
+      { href: "/sessions", label: "Live Classes", icon: <SessionsIcon />, badge: "PRO" },
+    ],
   },
   {
     title: "COMMUNITY",
@@ -161,6 +244,7 @@ const BASE_SECTIONS: { title: string; items: NavItem[] }[] = [
   {
     title: "TRACK",
     items: [
+      { href: "/skill-progress", label: "Skill Progress", icon: <SkillsIcon /> },
       { href: "/mistakes", label: "Mistakes", icon: <MistakesIcon /> },
       { href: "/saved", label: "Saved", icon: <SavedIcon /> },
     ],
@@ -168,10 +252,10 @@ const BASE_SECTIONS: { title: string; items: NavItem[] }[] = [
 ];
 
 function navLinkClass(active: boolean) {
-  return `flex min-h-10 items-center gap-2.5 rounded-lg px-2.5 py-2 text-[15px] font-medium transition ${
+  return `flex min-h-9 items-center gap-2.5 rounded-lg px-2.5 py-1.5 transition [&>svg]:h-[1.35rem] [&>svg]:w-[1.35rem] ${typography.navItem} ${
     active
-      ? "bg-white/20 text-white"
-      : "text-white/70 hover:bg-white/10 hover:text-white/90"
+      ? "bg-[#F5F5F5] text-arc-heading"
+      : "text-[#747474]/85 hover:bg-arc-soft hover:text-[#525252]/85"
   }`;
 }
 
@@ -230,19 +314,6 @@ export default function Sidebar({
     items: [...section.items],
   }));
 
-  if (bootcampName) {
-    studentSections.find((section) => section.title === "PRACTICE")?.items.unshift({
-      href: "/assignments",
-      label: "Roadmap",
-      icon: <AssignmentsIcon />,
-    });
-    studentSections.find((section) => section.title === "LEARN")?.items.push({
-      href: "/sessions",
-      label: "Live Lessons",
-      icon: <SessionsIcon />,
-    });
-  }
-
   let sections = studentSections.filter((section) => section.items.length > 0);
   if (isAdmin) {
     sections = [
@@ -250,7 +321,8 @@ export default function Sidebar({
         title: "ADMIN",
         items: [
           { href: "/admin", label: "Dashboard", icon: <HomeIcon />, match: "exact" },
-          { href: "/admin/bootcamps", label: "Bootcamps", icon: <AdminIcon /> },
+          { href: "/admin/students", label: "Students", icon: <AdminIcon /> },
+          { href: "/admin/classes", label: "Live Classes", icon: <SessionsIcon /> },
           { href: "/admin/leaderboard", label: "Leaderboard", icon: <LeaderboardIcon /> },
           { href: "/admin/question-search", label: "Lookup", icon: <SearchIcon /> },
           { href: "/admin/generate-questions", label: "Generate", icon: <SkillsIcon /> },
@@ -275,25 +347,22 @@ export default function Sidebar({
   }
 
   return (
-    <aside className="flex h-full w-full min-w-[14rem] max-w-[18rem] flex-col bg-arc-sidebar text-white lg:w-56 lg:max-w-none">
+    <aside
+      className="flex h-full w-full min-w-[14rem] max-w-[18rem] flex-col bg-white text-[#747474] lg:w-56 lg:max-w-none"
+    >
       {!hideBrand && (
-        <div className="flex h-14 shrink-0 items-center gap-2.5 border-b border-white/20 px-4">
-          <Image
-            src="/neoprep-mark-white.png"
-            alt="Tutormigo"
-            width={28}
-            height={28}
-            className="h-7 w-7 shrink-0 object-contain"
-            priority
-          />
-          <span className="min-w-0 flex-1 truncate font-sans text-lg font-semibold tracking-tight text-white">
+        <div className="flex h-14 shrink-0 items-center gap-2.5 px-4">
+          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-[#1BB1F6]">
+            <Image src="/neoprep-mark-white.png" alt="Tutormigo" width={22} height={22} className="h-[22px] w-[22px] object-contain" priority />
+          </span>
+          <span className="min-w-0 flex-1 truncate font-sans text-xl font-medium tracking-normal text-[#0A0A0A]">
             Tutormigo
           </span>
           {showCloseButton ? (
             <button
               type="button"
               onClick={onClose}
-              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-white/80 transition hover:bg-white/10 hover:text-white"
+              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-[#747474] transition hover:bg-arc-soft hover:text-[#525252]"
               aria-label="Close menu"
             >
               <CloseIcon />
@@ -301,13 +370,14 @@ export default function Sidebar({
           ) : null}
         </div>
       )}
-      <nav className={`flex-1 space-y-4 overflow-y-auto px-3 pb-3 ${hideBrand ? "pt-3" : "mt-4"}`}>
+      {!hideBrand ? <ExamSelector /> : null}
+      <nav className={`flex-1 space-y-2 overflow-y-auto px-3 pb-3 ${hideBrand ? "pt-3" : "mt-1"}`}>
         {sections.map((section) => (
           <div key={section.title}>
-            <p className="mb-1.5 px-3 text-[11px] font-semibold tracking-[0.08em] text-white/50">
+            <p className={`mb-1 px-3 ${typography.navSection}`}>
               {section.title}
             </p>
-            <div className="space-y-0.5">
+            <div className="space-y-0">
               {section.items.map((item) => (
                 <Link
                   key={item.href}
@@ -316,16 +386,39 @@ export default function Sidebar({
                   className={navLinkClass(isActive(pathname, item))}
                 >
                   {item.icon}
-                  {item.label}
+                  <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                  {item.badge ? (
+                    <span
+                      className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide text-white ${
+                        item.badge === "PRO" ? "bg-[#EC4899]" : "bg-[#1BB1F6]"
+                      }`}
+                    >
+                      {item.badge}
+                    </span>
+                  ) : null}
                 </Link>
               ))}
             </div>
           </div>
         ))}
       </nav>
-      <div className="space-y-1 border-t border-white/20 px-3 py-3">
-        <div className="flex items-center justify-between gap-2 px-1">
-          <span className="min-w-0 truncate font-sans text-sm font-medium text-white">
+      <div className="space-y-3 border-t border-[#ECECEC] px-3 py-3">
+        <div>
+            <p className={`mb-1 px-3 ${typography.navSection}`}>
+            ACCOUNT
+          </p>
+          <Link
+            href="/pricing"
+            onClick={onNavigate}
+            className={navLinkClass(pathname?.startsWith("/pricing") ?? false)}
+            style={{ color: "#E54D96" }}
+          >
+            <UpgradeIcon />
+            <span className="min-w-0 flex-1 truncate">Upgrade</span>
+          </Link>
+        </div>
+        <div className="flex min-h-9 items-center justify-between gap-2 rounded-lg px-2.5 py-1.5">
+          <span className="min-w-0 truncate font-sans text-sm font-medium text-[#525252]">
             {userName}
           </span>
           <Link
@@ -333,10 +426,10 @@ export default function Sidebar({
             onClick={onNavigate}
             aria-label="Settings"
             title="Settings"
-            className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md transition ${
+            className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md transition ${
               settingsActive
-                ? "text-white"
-                : "text-white/55 hover:bg-white/10 hover:text-white/85"
+                ? "bg-[#F4F4F4] text-[#0A0A0A]"
+                : "text-[#747474] hover:bg-arc-soft hover:text-[#525252]"
             }`}
           >
             <SettingsIcon />
@@ -345,7 +438,7 @@ export default function Sidebar({
         <button
           type="button"
           onClick={handleSignOut}
-          className="flex min-h-11 w-full items-center rounded-lg px-3 py-2.5 text-left text-[15px] font-medium text-white/70 transition hover:bg-white/10 hover:text-white/90"
+          className="flex min-h-11 w-full items-center rounded-lg px-2.5 py-2 text-left text-[15px] font-medium text-[#747474] transition hover:bg-arc-soft hover:text-[#525252]"
         >
           Sign out
         </button>
