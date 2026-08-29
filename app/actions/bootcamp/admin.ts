@@ -655,6 +655,22 @@ export async function getAdminStudentBootcampDetail(
   };
 }
 
+/** Student detail entry point for the admin Students directory. */
+export async function getAdminStudentDetail(
+  studentId: string
+): Promise<AdminStudentBootcampDetail | null> {
+  await requireAdmin();
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("students")
+    .select("bootcamp_id")
+    .eq("id", studentId)
+    .maybeSingle();
+
+  if (error || data?.bootcamp_id == null) return null;
+  return getAdminStudentBootcampDetail(Number(data.bootcamp_id), studentId);
+}
+
 function startOfUtcMonth(d: Date): Date {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1));
 }

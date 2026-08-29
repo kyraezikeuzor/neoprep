@@ -1,6 +1,7 @@
 "use client";
 
 import MathText from "@/components/MathText";
+import Link from "next/link";
 import type { AdminStudentIncorrectQuestion } from "@/app/actions/bootcamp";
 
 function formatAnswerDisplay(
@@ -71,6 +72,12 @@ export default function StudentIncorrectQuestion({
             </div>
           </div>
         </div>
+        <Link
+          href={`/question-bank?practice=1&question=${encodeURIComponent(item.question_id)}`}
+          className="arc-btn-secondary inline-flex min-h-10 items-center px-4 text-sm"
+        >
+          Re-answer this question
+        </Link>
       </div>
     </details>
   );

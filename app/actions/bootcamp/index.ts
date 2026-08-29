@@ -157,6 +157,12 @@ export async function getAdminStudentBootcampDetail(
   return admin.getAdminStudentBootcampDetail(...args);
 }
 
+export async function getAdminStudentDetail(
+  ...args: Parameters<typeof admin.getAdminStudentDetail>
+) {
+  return admin.getAdminStudentDetail(...args);
+}
+
 export async function getAdminMetrics(
   ...args: Parameters<typeof admin.getAdminMetrics>
 ) {
