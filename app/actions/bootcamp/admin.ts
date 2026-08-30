@@ -1,6 +1,7 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { normalizeChoices } from "@/lib/questions";
+import { normalizeChoices, normalizeQuestion, QUESTION_SELECT } from "@/lib/questions";
+import { getSatSectionScore } from "@/lib/satScore";
 import {
   MATH_DOMAINS,
   READING_DOMAINS,
@@ -15,6 +16,8 @@ import type {
   AdminStudentAssignmentDetail,
   AdminStudentBootcampDetail,
   AdminStudentIncorrectQuestion,
+  AdminPracticeTestRunDetail,
+  AdminPracticeTestRunSummary,
   AssignmentListItem,
   BankQuestionOption,
   BootcampSummary,
@@ -669,6 +672,139 @@ export async function getAdminStudentDetail(
 
   if (error || data?.bootcamp_id == null) return null;
   return getAdminStudentBootcampDetail(Number(data.bootcamp_id), studentId);
+}
+
+function testSection(module: string): "reading_writing" | "math" {
+  return module.startsWith("math") ? "math" : "reading_writing";
+}
+
+function testModuleOrder(module: string) {
+  return ["reading_writing_1", "reading_writing_2", "math_1", "math_2"].indexOf(module);
+}
+
+function answersMatch(selected: string | null | undefined, correct: string) {
+  if (!selected) return false;
+  const a = selected.trim().toLowerCase();
+  const b = correct.trim().toLowerCase();
+  if (a === b) return true;
+  const an = Number(a);
+  const bn = Number(b);
+  return !Number.isNaN(an) && !Number.isNaN(bn) && an === bn;
+}
+
+/** Lists the dedicated Practice Test 1 runs for an admin's student view. */
+export async function getAdminStudentPracticeTests(
+  studentId: string
+): Promise<AdminPracticeTestRunSummary[]> {
+  await requireAdmin();
+  const admin = createAdminClient();
+  const { data: test } = await admin
+    .from("tests")
+    .select("id,title")
+    .eq("title", "Practice Test 1")
+    .maybeSingle();
+  if (!test) return [];
+
+  const [{ data: runs }, { data: links }] = await Promise.all([
+    admin
+      .from("test_runs")
+      .select("id,status,started_at,completed_at")
+      .eq("test_id", test.id)
+      .eq("user_id", studentId)
+      .order("started_at", { ascending: false }),
+    admin.from("test_questions").select("question_id").eq("test_id", test.id),
+  ]);
+  const runRows = runs ?? [];
+  const questionIds = (links ?? []).map((row) => String(row.question_id));
+  if (!runRows.length) return [];
+  const runIds = runRows.map((row) => String(row.id));
+  const [{ data: attempts }, { data: feedback }] = await Promise.all([
+    admin.from("test_attempts").select("run_id,question_id").in("run_id", runIds),
+    questionIds.length
+      ? admin.from("feedback").select("question_id").eq("user_id", studentId).in("question_id", questionIds)
+      : Promise.resolve({ data: [] }),
+  ]);
+  const answeredByRun = new Map<string, Set<string>>();
+  for (const attempt of attempts ?? []) {
+    const id = String(attempt.run_id);
+    if (!answeredByRun.has(id)) answeredByRun.set(id, new Set());
+    answeredByRun.get(id)!.add(String(attempt.question_id));
+  }
+  const reportedQuestions = new Set((feedback ?? []).map((row) => String(row.question_id)));
+  return runRows.map((run) => ({
+    run_id: String(run.id), test_id: String(test.id), title: String(test.title),
+    status: run.status === "completed" ? "completed" : "in_progress",
+    started_at: String(run.started_at), completed_at: run.completed_at ? String(run.completed_at) : null,
+    answered: answeredByRun.get(String(run.id))?.size ?? 0,
+    total: questionIds.length, reported_questions: reportedQuestions.size,
+  }));
+}
+
+/** Detailed run review. A student-reported test item receives score credit. */
+export async function getAdminPracticeTestRunDetail(
+  studentId: string,
+  runId: string
+): Promise<AdminPracticeTestRunDetail | null> {
+  await requireAdmin();
+  const admin = createAdminClient();
+  const { data: run } = await admin
+    .from("test_runs")
+    .select("id,test_id,status,started_at,completed_at")
+    .eq("id", runId)
+    .eq("user_id", studentId)
+    .maybeSingle();
+  if (!run) return null;
+  const { data: test } = await admin.from("tests").select("id,title").eq("id", run.test_id).eq("title", "Practice Test 1").maybeSingle();
+  if (!test) return null;
+  const { data: links } = await admin
+    .from("test_questions")
+    .select("question_id,module,position")
+    .eq("test_id", test.id);
+  const orderedLinks = [...(links ?? [])].sort((a, b) =>
+    testModuleOrder(String(a.module)) - testModuleOrder(String(b.module)) || Number(a.position) - Number(b.position)
+  );
+  const questionIds = orderedLinks.map((row) => String(row.question_id));
+  const [{ data: questionRows }, { data: attempts }, { data: feedback }] = await Promise.all([
+    questionIds.length ? admin.from("questions").select(QUESTION_SELECT).in("question_id", questionIds) : Promise.resolve({ data: [] }),
+    admin.from("test_attempts").select("question_id,selected_answer").eq("run_id", runId),
+    questionIds.length ? admin.from("feedback").select("question_id,issue_type,notes,created_at").eq("user_id", studentId).in("question_id", questionIds) : Promise.resolve({ data: [] }),
+  ]);
+  const questions = new Map((questionRows ?? []).map((row) => [String(row.question_id), normalizeQuestion(row as Record<string, unknown>)]));
+  const answers = new Map((attempts ?? []).map((row) => [String(row.question_id), row.selected_answer ? String(row.selected_answer) : null]));
+  const reports = new Map<string, { issue_type: string; notes: string | null; created_at: string | null }[]>();
+  for (const report of feedback ?? []) {
+    const id = String(report.question_id);
+    const entries = reports.get(id) ?? [];
+    entries.push({ issue_type: String(report.issue_type), notes: report.notes ? String(report.notes) : null, created_at: report.created_at ? String(report.created_at) : null });
+    reports.set(id, entries);
+  }
+  let rawReading = 0, rawMath = 0, adjustedReading = 0, adjustedMath = 0;
+  const questionDetails = orderedLinks.flatMap((link) => {
+    const question = questions.get(String(link.question_id));
+    if (!question) return [];
+    const section = testSection(String(link.module));
+    const selected = answers.get(question.question_id) ?? null;
+    const correct = answersMatch(selected, question.correct_answer);
+    const questionReports = reports.get(question.question_id) ?? [];
+    const credited = questionReports.length > 0;
+    if (correct) section === "math" ? rawMath++ : rawReading++;
+    if (correct || credited) section === "math" ? adjustedMath++ : adjustedReading++;
+    return [{ question_id: question.question_id, module: String(link.module), position: Number(link.position), section, domain: question.domain, skill: question.skill, stem: question.stem, choices: question.choices, correct_answer: question.correct_answer, selected_answer: selected, answered_correctly: correct, credited_for_report: credited, reports: questionReports }];
+  });
+  const rawReadingScore = getSatSectionScore("reading_writing", rawReading);
+  const rawMathScore = getSatSectionScore("math", rawMath);
+  const adjustedReadingScore = getSatSectionScore("reading_writing", adjustedReading);
+  const adjustedMathScore = getSatSectionScore("math", adjustedMath);
+  const runSummary: AdminPracticeTestRunSummary = {
+    run_id: String(run.id), test_id: String(test.id), title: String(test.title), status: run.status === "completed" ? "completed" : "in_progress", started_at: String(run.started_at), completed_at: run.completed_at ? String(run.completed_at) : null,
+    answered: answers.size, total: questionIds.length, reported_questions: reports.size,
+  };
+  return {
+    run: runSummary,
+    raw: { reading_writing: rawReading, math: rawMath, total: rawReadingScore.score + rawMathScore.score, total_lower: rawReadingScore.lower + rawMathScore.lower, total_upper: rawReadingScore.upper + rawMathScore.upper },
+    adjusted: { reading_writing: adjustedReading, math: adjustedMath, total: adjustedReadingScore.score + adjustedMathScore.score, total_lower: adjustedReadingScore.lower + adjustedMathScore.lower, total_upper: adjustedReadingScore.upper + adjustedMathScore.upper },
+    questions: questionDetails,
+  };
 }
 
 function startOfUtcMonth(d: Date): Date {

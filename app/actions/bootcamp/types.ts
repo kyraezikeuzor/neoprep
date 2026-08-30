@@ -132,6 +132,41 @@ export type AdminStudentBootcampDetail = {
   assignments: AdminStudentAssignmentDetail[];
 };
 
+export type AdminPracticeTestRunSummary = {
+  run_id: string;
+  test_id: string;
+  title: string;
+  status: "in_progress" | "completed";
+  started_at: string;
+  completed_at: string | null;
+  answered: number;
+  total: number;
+  reported_questions: number;
+};
+
+export type AdminPracticeTestQuestion = {
+  question_id: string;
+  module: string;
+  position: number;
+  section: "reading_writing" | "math";
+  domain: string | null;
+  skill: string | null;
+  stem: string;
+  choices: Record<string, string> | null;
+  correct_answer: string;
+  selected_answer: string | null;
+  answered_correctly: boolean;
+  credited_for_report: boolean;
+  reports: { issue_type: string; notes: string | null; created_at: string | null }[];
+};
+
+export type AdminPracticeTestRunDetail = {
+  run: AdminPracticeTestRunSummary;
+  raw: { reading_writing: number; math: number; total: number; total_lower: number; total_upper: number };
+  adjusted: { reading_writing: number; math: number; total: number; total_lower: number; total_upper: number };
+  questions: AdminPracticeTestQuestion[];
+};
+
 export type BankQuestionOption = {
   question_id: string;
   domain: string | null;
