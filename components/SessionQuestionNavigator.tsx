@@ -75,6 +75,7 @@ export default function SessionQuestionNavigator({
   currentIndex,
   results,
   markedForReview,
+  selectedQuestionIds,
 }: {
   open: boolean;
   onClose: () => void;
@@ -84,6 +85,8 @@ export default function SessionQuestionNavigator({
   currentIndex: number;
   results: Record<string, SessionNavResult>;
   markedForReview: Set<string>;
+  /** Selected-but-ungraded answers, used by timed practice tests. */
+  selectedQuestionIds?: Set<string>;
 }) {
   if (!open) return null;
 
@@ -192,6 +195,7 @@ export default function SessionQuestionNavigator({
               : false;
             const isCurrent = index === currentIndex;
             const canJump = Boolean(question);
+            const isSelected = question ? selectedQuestionIds?.has(question.question_id) : false;
 
             const statusLabel = result
               ? result.correct
@@ -214,7 +218,9 @@ export default function SessionQuestionNavigator({
                 )} ${
                   isCurrent
                     ? "border-[3px] border-arc-ink"
-                    : "border-[3px] border-transparent hover:brightness-[0.97]"
+                    : isSelected
+                      ? "border-[3px] border-arc-accent hover:brightness-[0.97]"
+                      : "border-[3px] border-transparent hover:brightness-[0.97]"
                 } disabled:cursor-not-allowed disabled:opacity-45`}
                 aria-current={isCurrent ? "true" : undefined}
                 aria-label={`Question ${index + 1}${statusLabel}${reviewLabel}`}

@@ -191,3 +191,4 @@ export async function getVocabularyPracticeSet(
 export async function listPracticeTests(...args: Parameters<typeof tests.listPracticeTests>) { return tests.listPracticeTests(...args); }
 export async function getPracticeTest(...args: Parameters<typeof tests.getPracticeTest>) { return tests.getPracticeTest(...args); }
 export async function savePracticeTestAnswer(...args: Parameters<typeof tests.savePracticeTestAnswer>) { return tests.savePracticeTestAnswer(...args); }
+export async function completePracticeTestRun(...args: Parameters<typeof tests.completePracticeTestRun>) { return tests.completePracticeTestRun(...args); }
