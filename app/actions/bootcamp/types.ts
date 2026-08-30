@@ -24,6 +24,8 @@ export type AssignmentListItem = {
   start_date: string | null;
   question_count: number;
   completed_count: number;
+  /** Bootcamp work appears separately from a student's adaptive Question Sets. */
+  source: "bootcamp" | "roadmap";
 };
 
 export type AssignmentDetail = {

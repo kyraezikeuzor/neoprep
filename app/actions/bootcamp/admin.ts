@@ -237,6 +237,7 @@ export async function listAdminAssignments(
       start_date: (assignment.created_at as string | null) ?? null,
       question_count: countByAssignment.get(id) ?? 0,
       completed_count: 0,
+      source: "bootcamp" as const,
     };
   });
 }
