@@ -3,10 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import MathText from "./MathText";
 import GraphRenderer, { type GraphSpec } from "./graphs/GraphRenderer";
-import { getRandomQuestion, submitAttempt, toggleBookmark, type Question } from "@/app/actions";
+import { completePracticeTestRun, getRandomQuestion, savePracticeTestAnswer, submitAttempt, toggleBookmark, type Question } from "@/app/actions";
 import type { SubjectFilter, TierFilter } from "@/lib/subjects";
 import { MATH_DOMAINS } from "@/lib/subjects";
 import { splitLeadingEquations } from "@/lib/mathText";
+import { getSatSectionScore, type ScoreRange } from "@/lib/satScore";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import DesmosCalculatorPanel, { CalculatorButton } from "./DesmosCalculator";
 import HighlightsNotesPanel, {
@@ -34,6 +36,18 @@ function formatTime(totalSeconds: number) {
   const m = Math.floor(totalSeconds / 60);
   const s = totalSeconds % 60;
   return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+function ScoreLine({ label, score, range }: { label: string; score: number; range: ScoreRange }) {
+  return (
+    <div className="flex items-center justify-between gap-4 text-left">
+      <div>
+        <p className="font-sans text-lg font-medium text-arc-ink">{label}</p>
+        <p className="mt-1 font-sans text-sm text-arc-muted">Conversion range {range.lower}–{range.upper}</p>
+      </div>
+      <p className="font-sans text-5xl font-medium tabular-nums text-arc-ink">{score}</p>
+    </div>
+  );
 }
 
 function formatCorrectDisplay(question: Question) {
@@ -187,6 +201,12 @@ export default function QuestionCard({
   initialSessionResults,
   initialHistoryIndex = 0,
   initialBookmarkedIds,
+  accessLimitReached = false,
+  viewerType = "practice-questions",
+  testId,
+  testRunId,
+  testCompleted = false,
+  modules,
 }: {
   initialQuestion: Question | null;
   /** Tighter top padding when nested (e.g. Question Search card) */
@@ -205,10 +225,19 @@ export default function QuestionCard({
   initialHistoryIndex?: number;
   /** Question IDs already in the bookmarks table for this student. */
   initialBookmarkedIds?: string[];
+  /** True when a Free student has exhausted the unique-question allowance. */
+  accessLimitReached?: boolean;
+  /** Shared viewer modes: regular answered practice or a timed, deferred-score test. */
+  viewerType?: "practice-questions" | "practice-test";
+  testId?: string;
+  testRunId?: string;
+  testCompleted?: boolean;
+  modules?: { title: string; questions: Question[]; minutes: number; section?: "reading_writing" | "math" }[];
 }) {
   const router = useRouter();
   const { setPracticeActive } = usePracticeSession();
   const isAssignmentMode = Boolean(assignmentId) && Boolean(questionQueue?.length);
+  const isTestMode = viewerType === "practice-test" && Boolean(testId);
   const [history, setHistory] = useState<Question[]>(() => {
     if (questionQueue && questionQueue.length > 0) return [...questionQueue];
     return initialQuestion ? [initialQuestion] : [];
@@ -218,12 +247,26 @@ export default function QuestionCard({
     if (len <= 0) return 0;
     return Math.min(Math.max(0, initialHistoryIndex), len - 1);
   })();
+  const initialModuleIndex = (() => {
+    if (!isTestMode || !modules?.length) return 0;
+    let offset = 0;
+    for (let index = 0; index < modules.length; index += 1) {
+      offset += modules[index].questions.length;
+      if (startIndex < offset) return index;
+    }
+    return Math.max(0, modules.length - 1);
+  })();
   const [historyIndex, setHistoryIndex] = useState(startIndex);
   const question = history[historyIndex] ?? null;
 
   const [sessionResults, setSessionResults] = useState<
     Record<string, { correct: boolean; selectedAnswer: string }>
   >(() => initialSessionResults ?? {});
+  // Selections must survive navigation independently of whether the student
+  // has pressed Answer yet. Results are only for graded/submitted responses.
+  const [sessionSelections, setSessionSelections] = useState<Record<string, string>>(
+    () => Object.fromEntries(Object.entries(initialSessionResults ?? {}).map(([id, result]) => [id, result.selectedAnswer]))
+  );
 
   const initialRestored = (() => {
     const q = questionQueue?.[startIndex] ?? initialQuestion ?? null;
@@ -234,9 +277,9 @@ export default function QuestionCard({
   const [selected, setSelected] = useState<string>(
     () => initialRestored?.selectedAnswer ?? ""
   );
-  const [submitted, setSubmitted] = useState(() => Boolean(initialRestored));
+  const [submitted, setSubmitted] = useState(() => Boolean(initialRestored) && !isTestMode);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(
-    () => (initialRestored ? initialRestored.correct : null)
+    () => (initialRestored && !isTestMode ? initialRestored.correct : null)
   );
   const [showExplanation, setShowExplanation] = useState(false);
   const [elapsed, setElapsed] = useState(0);
@@ -245,7 +288,12 @@ export default function QuestionCard({
   const [timeHidden, setTimeHidden] = useState(false);
   const [selectedTier] = useState<TierFilter>(initialTier);
   const [selectedSubject] = useState<SubjectFilter>(initialSubject);
-  const [sessionComplete, setSessionComplete] = useState(false);
+  const [sessionComplete, setSessionComplete] = useState(testCompleted);
+  const [activeModuleIndex, setActiveModuleIndex] = useState(initialModuleIndex);
+  const [moduleOverview, setModuleOverview] = useState(false);
+  const [moduleSecondsLeft, setModuleSecondsLeft] = useState(
+    () => (modules?.[initialModuleIndex]?.minutes ?? 0) * 60
+  );
   const [reviewingFromResults, setReviewingFromResults] = useState(false);
   const [calculatorOpen, setCalculatorOpen] = useState(false);
   const [highlightsOpen, setHighlightsOpen] = useState(false);
@@ -257,14 +305,22 @@ export default function QuestionCard({
   const [eliminated, setEliminated] = useState<Set<string>>(() => new Set());
   const [selectPulse, setSelectPulse] = useState<{ letter: string; n: number } | null>(null);
   const [navigatorOpen, setNavigatorOpen] = useState(false);
+  const [accessError, setAccessError] = useState("");
   const passageRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const qbPrefetchDone = useRef(false);
 
-  /** Local browsing-session position (1-based). Not a DB set/session id. */
-  const sessionQuestionNumber = historyIndex + 1;
+  const activeModuleStartIndex = isTestMode
+    ? (modules ?? []).slice(0, activeModuleIndex).reduce((total, item) => total + item.questions.length, 0)
+    : 0;
+  /** Position within the active module for tests, otherwise the session. */
+  const sessionQuestionNumber = isTestMode
+    ? historyIndex - activeModuleStartIndex + 1
+    : historyIndex + 1;
   const effectiveSessionLength =
-    isAssignmentMode && questionQueue
+    isTestMode
+      ? modules?.[activeModuleIndex]?.questions.length ?? 0
+      : isAssignmentMode && questionQueue
       ? questionQueue.length
       : typeof sessionLength === "number" && sessionLength > 0
         ? sessionLength
@@ -272,15 +328,26 @@ export default function QuestionCard({
   const isFixedSession = effectiveSessionLength > 0;
   const isLastSessionQuestion =
     isFixedSession && sessionQuestionNumber >= effectiveSessionLength;
-  const sessionCorrectCount = Object.values(sessionResults).filter((r) => r.correct).length;
+  const sessionCorrectCount = isTestMode
+    ? history.filter((item) => {
+        const answer = sessionSelections[item.question_id];
+        return Boolean(answer) && isCorrectAnswer(answer, item.correct_answer);
+      }).length
+    : Object.values(sessionResults).filter((r) => r.correct).length;
   const missedSessionQuestions = history.filter(
     (q) => sessionResults[q.question_id]?.correct === false
   );
   const isMarkedForReview = question
     ? markedForReview.has(question.question_id)
     : false;
+  const currentModule = isTestMode
+    ? modules?.[activeModuleIndex]
+    : modules?.find((item) => item.questions.some((itemQuestion) => itemQuestion.question_id === question?.question_id));
+  const currentModuleQuestions = currentModule?.questions ?? [];
+  const currentModuleStartIndex = activeModuleStartIndex;
+  const currentModuleEndIndex = currentModuleStartIndex + currentModuleQuestions.length - 1;
 
-  const canGoPrevious = historyIndex > 0;
+  const canGoPrevious = historyIndex > (isTestMode ? currentModuleStartIndex : 0);
   const isMathQuestion =
     !!question?.domain &&
     (MATH_DOMAINS as readonly string[]).includes(question.domain);
@@ -306,6 +373,7 @@ export default function QuestionCard({
       while (collected.length < effectiveSessionLength && !cancelled) {
         const next = await getRandomQuestion({
           excludeId: collected[collected.length - 1]?.question_id,
+          excludeIds: [...seen],
           tier: selectedTier,
           subject: selectedSubject,
         });
@@ -431,9 +499,15 @@ export default function QuestionCard({
     setIsCorrect(null);
     setShowExplanation(false);
     setSelectPulse(null);
+    setAccessError("");
   }
 
   function restoreOrResetForQuestion(q: Question) {
+    if (isTestMode) {
+      resetAttemptState();
+      setSelected(sessionSelections[q.question_id] ?? "");
+      return;
+    }
     const result = sessionResults[q.question_id];
     if (result) {
       setSelected(result.selectedAnswer);
@@ -443,6 +517,7 @@ export default function QuestionCard({
       setSelectPulse(null);
     } else {
       resetAttemptState();
+      setSelected(sessionSelections[q.question_id] ?? "");
     }
   }
 
@@ -498,7 +573,7 @@ export default function QuestionCard({
       clearInterval(timerRef.current);
       timerRef.current = null;
     }
-    if (!submitted && !isPaused) {
+    if (!isTestMode && !submitted && !isPaused) {
       timerRef.current = setInterval(() => setElapsed((s) => s + 1), 1000);
     }
     return () => {
@@ -507,7 +582,26 @@ export default function QuestionCard({
         timerRef.current = null;
       }
     };
-  }, [question?.question_id, submitted, isPaused]);
+  }, [question?.question_id, submitted, isPaused, isTestMode]);
+
+  useEffect(() => {
+    if (!isTestMode || isPaused || moduleOverview || sessionComplete || moduleSecondsLeft <= 0) return;
+    const timer = window.setInterval(() => {
+      setModuleSecondsLeft((seconds) => Math.max(0, seconds - 1));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [isTestMode, isPaused, moduleOverview, sessionComplete, moduleSecondsLeft]);
+
+  useEffect(() => {
+    if (isTestMode && moduleSecondsLeft === 0 && !moduleOverview && !sessionComplete) {
+      const isLastModule = activeModuleIndex >= (modules?.length ?? 1) - 1;
+      if (isLastModule) {
+        if (testRunId) void completePracticeTestRun(testRunId);
+        setSessionComplete(true);
+      }
+      else setModuleOverview(true);
+    }
+  }, [isTestMode, moduleSecondsLeft, moduleOverview, sessionComplete, activeModuleIndex, modules]);
 
   async function loadFilteredQuestion(excludeId?: string) {
     setLoadingNext(true);
@@ -520,6 +614,7 @@ export default function QuestionCard({
     }
     const next = await getRandomQuestion({
       excludeId,
+      excludeIds: history.map((item) => item.question_id),
       tier: selectedTier,
       subject: selectedSubject,
     });
@@ -536,6 +631,9 @@ export default function QuestionCard({
     }
 
     const correct = isCorrectAnswer(selected, question.correct_answer);
+    setSessionSelections((prev) => ({ ...prev, [question.question_id]: selected }));
+    const previousResult = sessionResults[question.question_id];
+    setAccessError("");
     setIsCorrect(correct);
     setSubmitted(true);
     if (isFixedSession) {
@@ -546,6 +644,13 @@ export default function QuestionCard({
     }
 
     try {
+      if (isTestMode && testId && testRunId) {
+        await savePracticeTestAnswer({ testId, runId: testRunId, questionId: question.question_id, selectedAnswer: selected });
+        // Keep the score privately for the closing screen; do not reveal it per question.
+        setSessionResults((prev) => ({ ...prev, [question.question_id]: { correct, selectedAnswer: selected } }));
+        setSubmitted(true);
+        return;
+      }
       await submitAttempt({
         questionId: question.question_id,
         selectedAnswer: selected,
@@ -556,6 +661,21 @@ export default function QuestionCard({
       router.refresh();
     } catch (err) {
       console.error(err);
+      setSubmitted(false);
+      setIsCorrect(null);
+      if (isFixedSession) {
+        setSessionResults((prev) => {
+          const next = { ...prev };
+          if (previousResult) next[question.question_id] = previousResult;
+          else delete next[question.question_id];
+          return next;
+        });
+      }
+      setAccessError(
+        err instanceof Error
+          ? err.message
+          : "We could not save this answer. Please try again."
+      );
     }
   }
 
@@ -569,6 +689,11 @@ export default function QuestionCard({
   }
 
   async function handleNext() {
+    if (isTestMode && historyIndex >= currentModuleEndIndex) {
+      setModuleOverview(true);
+      return;
+    }
+
     // Re-walk forward through history if we previously went back
     if (historyIndex < history.length - 1) {
       const nextIndex = historyIndex + 1;
@@ -580,12 +705,32 @@ export default function QuestionCard({
     }
 
     if (isFixedSession && history.length >= effectiveSessionLength) {
-      if (!submitted) return;
+      if (!submitted && !isTestMode) return;
       setSessionComplete(true);
       return;
     }
 
     await loadFilteredQuestion(question?.question_id);
+  }
+
+  function continueFromModuleOverview() {
+    const isLastModule = activeModuleIndex >= (modules?.length ?? 1) - 1;
+    if (isLastModule) {
+      setModuleOverview(false);
+      if (testRunId) void completePracticeTestRun(testRunId);
+      setSessionComplete(true);
+      return;
+    }
+
+    const nextModuleIndex = activeModuleIndex + 1;
+    const nextQuestionIndex = currentModuleEndIndex + 1;
+    setActiveModuleIndex(nextModuleIndex);
+    setModuleSecondsLeft((modules?.[nextModuleIndex]?.minutes ?? 0) * 60);
+    setModuleOverview(false);
+    setIsPaused(false);
+    setHistoryIndex(nextQuestionIndex);
+    const nextQuestion = history[nextQuestionIndex];
+    if (nextQuestion) restoreOrResetForQuestion(nextQuestion);
   }
 
   async function startAnotherSession() {
@@ -616,6 +761,7 @@ export default function QuestionCard({
     while (collected.length < effectiveSessionLength) {
       const next = await getRandomQuestion({
         excludeId: collected[collected.length - 1]?.question_id,
+        excludeIds: [...seen],
         tier: selectedTier,
         subject: selectedSubject,
       });
@@ -665,6 +811,29 @@ export default function QuestionCard({
   }
 
   if (!question && !sessionComplete) {
+    if (accessLimitReached) {
+      return (
+        <div className="flex h-full min-h-0 items-center justify-center px-8 py-16 text-center">
+          <div className="max-w-md rounded-3xl border-2 border-arc-line bg-white p-8">
+            <p className="font-sans text-sm font-semibold text-arc-accent">Free plan</p>
+            <h1 className="mt-2 font-dm text-3xl font-medium tracking-normal text-arc-ink">
+              You’ve reached 100 questions
+            </h1>
+            <p className="mt-3 font-sans text-sm leading-6 text-arc-muted">
+              Upgrade to Pro for full access to the question bank, or review questions you have already attempted.
+            </p>
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
+              <Link href="/pricing" className="arc-btn-primary px-6 py-3 text-base">
+                Upgrade to Pro
+              </Link>
+              <Link href="/question-bank" className="arc-btn-secondary px-6 py-3 text-base">
+                Back to Question Bank
+              </Link>
+            </div>
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="mx-auto max-w-2xl px-8 py-16 text-center">
         <p className="text-sm text-arc-muted">No questions available right now.</p>
@@ -672,7 +841,131 @@ export default function QuestionCard({
     );
   }
 
+  if (isTestMode && moduleOverview && currentModule) {
+    const answeredCount = currentModuleQuestions.filter(
+      (item) => Boolean(sessionSelections[item.question_id])
+    ).length;
+    const isLastModule = activeModuleIndex >= (modules?.length ?? 1) - 1;
+
+    return (
+      <div className="fixed inset-0 z-[100] flex h-[100dvh] min-h-0 w-full flex-col overflow-hidden bg-white">
+        <header className="flex shrink-0 items-center justify-between border-b border-arc-line px-5 py-4 sm:px-8">
+          <button
+            type="button"
+            onClick={returnToBankLanding}
+            className="rounded-lg border border-arc-line px-4 py-2 font-sans text-sm font-semibold text-arc-ink transition hover:bg-arc-soft"
+          >
+            Save & exit
+          </button>
+          <div className="text-center">
+            <p className="font-sans text-sm font-semibold text-arc-ink">{currentModule.title}</p>
+            <p className="mt-0.5 font-sans text-xs text-arc-muted">Practice Test · Module {activeModuleIndex + 1} of {modules?.length ?? 1}</p>
+          </div>
+          <span className="font-sans text-sm font-semibold tabular-nums text-arc-ink">{formatTime(moduleSecondsLeft)}</span>
+        </header>
+        <main className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto px-5 py-10 sm:px-8">
+          <div className="w-full max-w-2xl">
+            <p className="font-sans text-xs font-semibold uppercase tracking-wide text-arc-muted">Module complete</p>
+            <h1 className="mt-2 font-sans text-3xl font-semibold tracking-tight text-arc-ink">Review your answers</h1>
+            <p className="mt-2 font-sans text-base text-arc-muted">You answered {answeredCount} of {currentModuleQuestions.length} questions. Select a question to review it before continuing.</p>
+            <div className="mt-7 grid grid-cols-5 gap-3 sm:grid-cols-8">
+              {currentModuleQuestions.map((item, index) => {
+                const answered = Boolean(sessionSelections[item.question_id]);
+                return (
+                  <button
+                    key={item.question_id}
+                    type="button"
+                    onClick={() => {
+                      const targetIndex = currentModuleStartIndex + index;
+                      setHistoryIndex(targetIndex);
+                      restoreOrResetForQuestion(item);
+                      setModuleOverview(false);
+                    }}
+                    className={`flex aspect-square items-center justify-center rounded-xl border font-sans text-sm font-semibold transition ${
+                      answered
+                        ? "border-2 border-arc-accent bg-arc-accentSoft text-arc-ink"
+                        : "border-arc-line bg-white text-arc-ink hover:border-arc-muted"
+                    }`}
+                    aria-label={`Question ${index + 1}${answered ? ", answered" : ", unanswered"}`}
+                  >
+                    {index + 1}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="mt-8 flex justify-end">
+              <button
+                type="button"
+                onClick={continueFromModuleOverview}
+                className="arc-btn-primary rounded-xl px-5 py-3 text-sm"
+              >
+                {isLastModule ? "Finish test" : `Continue to ${modules?.[activeModuleIndex + 1]?.title ?? "next module"}`}
+              </button>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   if (sessionComplete && isFixedSession) {
+    if (isTestMode) {
+      const scoredModules = (modules ?? []).map((module) => ({
+        ...module,
+        correct: module.questions.filter((item) => {
+          const answer = sessionSelections[item.question_id];
+          return Boolean(answer) && isCorrectAnswer(answer, item.correct_answer);
+        }).length,
+      }));
+      const readingRaw = scoredModules
+        .filter((module) => module.section === "reading_writing" || module.title.startsWith("Reading"))
+        .reduce((total, module) => total + module.correct, 0);
+      const mathRaw = scoredModules
+        .filter((module) => module.section === "math" || module.title.startsWith("Math"))
+        .reduce((total, module) => total + module.correct, 0);
+      const readingScore = getSatSectionScore("reading_writing", readingRaw);
+      const mathScore = getSatSectionScore("math", mathRaw);
+      const totalScore = readingScore.score + mathScore.score;
+
+      return (
+        <div className="fixed inset-0 z-[100] flex min-h-[100dvh] items-center overflow-y-auto bg-white px-6 py-10 sm:px-12">
+          <div className="mx-auto grid w-full max-w-6xl gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(22rem,0.8fr)] lg:items-start">
+            <section>
+              <p className="font-sans text-xs font-semibold uppercase tracking-wide text-arc-muted">Practice test complete</p>
+              <h1 className="mt-2 font-sans text-3xl font-semibold tracking-tight text-arc-ink">Your module results</h1>
+              <div className="mt-8 space-y-7">
+                {scoredModules.map((module) => {
+                  const percent = module.questions.length ? (module.correct / module.questions.length) * 100 : 0;
+                  return (
+                    <div key={module.title}>
+                      <div className="flex items-end justify-between gap-4">
+                        <p className="font-sans text-lg font-semibold text-arc-ink">{module.title}</p>
+                        <p className="rounded-2xl bg-arc-soft px-4 py-2 font-sans text-xl font-medium tabular-nums text-arc-ink">{module.correct} <span className="text-arc-muted">/ {module.questions.length}</span></p>
+                      </div>
+                      <div className="mt-3 h-3 overflow-hidden rounded-full bg-arc-line">
+                        <div className="h-full rounded-full bg-arc-accent" style={{ width: `${percent}%` }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+            <aside className="rounded-3xl border border-arc-line bg-white p-7 text-center shadow-sm sm:p-10">
+              <p className="font-sans text-2xl font-medium text-arc-ink">Total Score</p>
+              <p className="mt-5 font-sans text-8xl font-semibold tracking-tight text-arc-ink">{totalScore}</p>
+              <p className="mt-2 font-sans text-lg text-arc-muted">400–1600</p>
+              <div className="my-8 border-t border-arc-line" />
+              <ScoreLine label="Reading & Writing Score" score={readingScore.score} range={readingScore} />
+              <div className="my-7 border-t border-arc-line" />
+              <ScoreLine label="Math Score" score={mathScore.score} range={mathScore} />
+              <button type="button" onClick={returnToBankLanding} className="arc-btn-primary mt-9 w-full rounded-xl px-5 py-3 text-base">
+                Back to Practice Tests
+              </button>
+            </aside>
+          </div>
+        </div>
+      );
+    }
     const total = effectiveSessionLength;
     const correct = sessionCorrectCount;
     return (
@@ -680,14 +973,14 @@ export default function QuestionCard({
         <div className="w-full max-w-md">
           <div className="text-center">
             <p className="font-sans text-xs font-medium uppercase tracking-wide text-arc-muted">
-              Session complete
+              {isTestMode ? "Practice test complete" : "Session complete"}
             </p>
             <h2 className="mt-2 font-sans text-3xl font-semibold tracking-tight text-arc-ink">
               {correct} of {total} correct
             </h2>
           </div>
 
-          {missedSessionQuestions.length > 0 && (
+          {!isTestMode && missedSessionQuestions.length > 0 && (
             <div className="mt-6">
               <p className="font-sans text-xs font-medium uppercase tracking-wide text-arc-muted">
                 Missed
@@ -749,7 +1042,7 @@ export default function QuestionCard({
   }
 
   const isGridIn = !question.choices || Object.keys(question.choices).length === 0;
-  const panelOpen = submitted && showExplanation;
+  const panelOpen = !isTestMode && submitted && showExplanation;
   const sidePanelOpen = panelOpen || calculatorOpen || highlightsOpen;
   const correctDisplay = formatCorrectDisplay(question);
 
@@ -794,7 +1087,7 @@ export default function QuestionCard({
     TOPIC_OPTIONS.find((o) => o.value === selectedSubject)?.label ?? "All";
 
   return (
-    <div className="relative flex h-full min-h-0 w-full flex-col overflow-hidden">
+    <div className="fixed inset-0 z-[100] flex h-[100dvh] min-h-0 w-full flex-col overflow-hidden bg-white">
       {/* Header stays full-width — side panels never compress it */}
       <div className={`shrink-0 px-3 sm:px-6 md:px-8 ${embedded ? "pt-3" : "pt-2"}`}>
           {/* Selection labels · timer · calculator — single compact row */}
@@ -806,8 +1099,13 @@ export default function QuestionCard({
                   onClick={returnToBankLanding}
                   className="rounded-lg bg-arc-ink px-3 py-1.5 font-sans text-sm font-semibold text-white transition hover:bg-[#2D2D2D] sm:px-3.5"
                 >
-                  Exit
+                  Save & exit
                 </button>
+                {isTestMode && (
+                  <span className="inline-flex items-center rounded-lg bg-arc-soft px-3 py-1.5 font-sans text-sm font-semibold text-arc-ink">
+                    {currentModule?.title ?? "Practice Test"}
+                  </span>
+                )}
                 {!hideFilters && (
                   <div className="hidden min-w-0 flex-wrap items-center gap-2 sm:flex">
                     <span className="inline-flex items-center gap-2 rounded-full bg-arc-soft px-3 py-1.5 font-sans text-sm font-normal text-arc-heading">
@@ -831,7 +1129,7 @@ export default function QuestionCard({
                         />
                         <path strokeLinecap="round" d="M9 7h6M9 11h4" />
                       </svg>
-                      {selectedTopicLabel}
+                      {isTestMode ? currentModule?.title ?? "Practice Test" : selectedTopicLabel}
                     </span>
                     <span className="inline-flex items-center gap-2 rounded-full bg-arc-soft px-3 py-1.5 font-sans text-sm font-normal text-arc-heading">
                       <svg
@@ -844,7 +1142,7 @@ export default function QuestionCard({
                         <rect x="10.25" y="9" width="3.5" height="11" rx="0.5" />
                         <rect x="16.5" y="4" width="3.5" height="16" rx="0.5" />
                       </svg>
-                      {selectedTierLabel}
+                      {isTestMode ? `${currentModule?.minutes ?? 0} min module` : selectedTierLabel}
                     </span>
                     {typeof sessionLength === "number" && sessionLength > 0 ? (
                       <span className="inline-flex items-center rounded-full bg-arc-soft px-3 py-1.5 font-sans text-sm font-normal text-arc-heading">
@@ -870,7 +1168,7 @@ export default function QuestionCard({
                   </svg>
                 ) : (
                   <p className="text-lg font-semibold tabular-nums leading-none text-arc-ink">
-                    {formatTime(elapsed)}
+                    {formatTime(isTestMode ? moduleSecondsLeft : elapsed)}
                   </p>
                 )}
                 <button
@@ -1002,7 +1300,7 @@ export default function QuestionCard({
             >
               {/* Question header — pill bar with black end caps */}
               <div className="shrink-0 px-4 pt-3 sm:px-6">
-                <div className="flex h-9 w-full items-stretch overflow-hidden rounded-lg bg-[#F9FAFB]">
+                <div className="flex h-9 w-full items-stretch overflow-hidden rounded-lg bg-arc-soft">
                   <span
                     className="flex aspect-square h-full shrink-0 items-center justify-center bg-arc-ink font-sans text-sm font-semibold tabular-nums text-white"
                     aria-label={`Question ${sessionQuestionNumber}`}
@@ -1135,13 +1433,14 @@ export default function QuestionCard({
                   </div>
 
                   {isGridIn ? (
+                    <div className="relative">
                     <input
                       type="text"
                       value={selected}
                       disabled={submitted}
-                      onChange={(e) => setSelected(e.target.value)}
+                      onChange={(e) => { setSelected(e.target.value); setSessionSelections((prev) => ({ ...prev, [question.question_id]: e.target.value })); if (isTestMode && testId && testRunId) void savePracticeTestAnswer({ testId, runId: testRunId, questionId: question.question_id, selectedAnswer: e.target.value }); }}
                       placeholder="Enter your answer"
-                      className={`question-prose choice-text w-full rounded-md border px-4 py-3 outline-none transition ${
+                      className={`question-prose choice-text w-full rounded-md border px-4 py-3 ${!isTestMode ? "pr-28" : ""} outline-none transition ${
                         submitted
                           ? isCorrect
                             ? "border-arc-correct bg-arc-correctBg text-arc-correct"
@@ -1149,6 +1448,8 @@ export default function QuestionCard({
                           : "border-arc-line focus:border-arc-accent"
                       }`}
                     />
+                    {selected && !submitted && !isTestMode ? <button type="button" onClick={handleSubmit} className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg bg-arc-accent px-4 py-2 text-sm font-semibold text-white">Answer</button> : null}
+                    </div>
                   ) : (
                     <div className="space-y-2.5">
                       {Object.entries(question.choices!).map(([letter, text]) => {
@@ -1164,7 +1465,7 @@ export default function QuestionCard({
                         let bubbleClasses =
                           "border-arc-muted/50 bg-transparent text-arc-ink";
 
-                        if (submitted) {
+                        if (submitted && !isTestMode) {
                           if (isTheCorrectAnswer) {
                             stateClasses = "border border-arc-correct bg-arc-correctBg";
                             bubbleClasses = "border-arc-correct bg-arc-correct text-white";
@@ -1191,12 +1492,14 @@ export default function QuestionCard({
                         const isPulsing = selectPulse?.letter === letter;
 
                         return (
-                          <div key={letter} className="flex items-center gap-2">
+                          <div key={letter} className="relative flex items-center gap-2">
                             <button
                               type="button"
                               disabled={submitted}
                               onClick={() => {
                                 setSelected(letter);
+                                setSessionSelections((prev) => ({ ...prev, [question.question_id]: letter }));
+                                if (isTestMode && testId && testRunId) void savePracticeTestAnswer({ testId, runId: testRunId, questionId: question.question_id, selectedAnswer: letter });
                                 setSelectPulse(null);
                                 window.setTimeout(() => {
                                   setSelectPulse({ letter, n: Date.now() });
@@ -1205,7 +1508,7 @@ export default function QuestionCard({
                               onAnimationEnd={(e) => {
                                 if (e.target === e.currentTarget) setSelectPulse(null);
                               }}
-                              className={`question-prose choice-text flex min-w-0 flex-1 items-center gap-3 rounded-2xl px-4 py-3 text-left transition-[border-color,background-color,box-shadow] duration-150 ${stateClasses}${
+                              className={`question-prose choice-text flex min-w-0 flex-1 items-center gap-3 rounded-2xl px-4 py-3 ${isSelected && !submitted && !isTestMode ? "pr-28" : ""} text-left transition-[border-color,background-color,box-shadow] duration-150 ${stateClasses}${
                                 isPulsing ? " choice-select-pulse" : ""
                               }`}
                             >
@@ -1243,6 +1546,15 @@ export default function QuestionCard({
                                 />
                               )}
                             </button>
+                            {isSelected && !submitted && !isTestMode ? (
+                              <button
+                                type="button"
+                                onClick={handleSubmit}
+                                className="absolute right-14 top-1/2 z-10 -translate-y-1/2 rounded-xl bg-arc-accent px-4 py-2 font-sans text-sm font-semibold text-white transition hover:bg-arc-accentDeep"
+                              >
+                                Answer
+                              </button>
+                            ) : null}
                             <button
                               type="button"
                               disabled={submitted}
@@ -1279,7 +1591,7 @@ export default function QuestionCard({
 
         {/* Bottom action bar — pinned in layout, never off-screen */}
         <div className="z-20 shrink-0 border-t border-arc-line bg-white px-3 py-3 sm:px-6 md:px-8">
-          <div className="grid w-full grid-cols-1 items-center gap-3 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:gap-2">
+          <div className="grid w-full grid-cols-1 items-center gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-2">
             <div className="min-w-0 justify-self-center sm:justify-self-start">
               {isFixedSession ? (
                 <button
@@ -1319,7 +1631,12 @@ export default function QuestionCard({
               )}
             </div>
 
-            <div className="flex flex-col items-center gap-2 justify-self-center">
+            <div className="flex flex-col items-end gap-2 justify-self-end">
+              {accessError ? (
+                <p className="max-w-md text-center font-sans text-xs font-medium text-red-600">
+                  {accessError}
+                </p>
+              ) : null}
               {submitted && (
                 <button
                   type="button"
@@ -1377,15 +1694,7 @@ export default function QuestionCard({
                       disabled={!canGoPrevious || loadingNext}
                       className="arc-btn-secondary rounded-lg px-6 py-3 text-base disabled:cursor-not-allowed disabled:opacity-40"
                     >
-                      Back
-                    </button>
-
-                    <button
-                      onClick={handleSubmit}
-                      disabled={submitted || !selected}
-                      className="arc-btn-primary rounded-lg px-10 py-3 text-base disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                      Answer
+                      Previous
                     </button>
 
                     <button
@@ -1395,7 +1704,8 @@ export default function QuestionCard({
                         loadingNext ||
                         (isLastSessionQuestion &&
                           historyIndex >= history.length - 1 &&
-                          !submitted)
+                          !submitted &&
+                          !isTestMode)
                       }
                       className="arc-btn-secondary rounded-lg px-6 py-3 text-base disabled:cursor-not-allowed disabled:opacity-40"
                     >
@@ -1410,7 +1720,7 @@ export default function QuestionCard({
               </div>
             </div>
 
-            <div className="hidden min-w-0 justify-self-end text-right sm:block">
+            <div className="hidden">
               {isFixedSession ? (
                 <>
                   <p className="truncate text-xs font-normal leading-snug text-arc-muted sm:text-sm">
@@ -1520,15 +1830,16 @@ export default function QuestionCard({
         <SessionQuestionNavigator
           open={navigatorOpen}
           onClose={() => setNavigatorOpen(false)}
-          onJump={jumpToSessionQuestion}
+          onJump={(index) => jumpToSessionQuestion(index + (isTestMode ? currentModuleStartIndex : 0))}
           questions={history.map((q) => ({
             question_id: q.question_id,
             tier: q.tier,
-          }))}
+          })).slice(isTestMode ? currentModuleStartIndex : 0, isTestMode ? currentModuleEndIndex + 1 : undefined)}
           total={effectiveSessionLength}
-          currentIndex={historyIndex}
+          currentIndex={isTestMode ? historyIndex - currentModuleStartIndex : historyIndex}
           results={sessionResults}
           markedForReview={markedForReview}
+          selectedQuestionIds={new Set(Object.keys(sessionSelections))}
         />
       ) : null}
       </div>

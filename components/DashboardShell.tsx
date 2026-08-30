@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import NotificationsMenu from "@/components/NotificationsMenu";
+import NavbarSearch from "@/components/NavbarSearch";
 import Sidebar from "@/components/Sidebar";
 import { PracticeSessionProvider, usePracticeSession } from "@/components/PracticeSessionProvider";
 
@@ -45,7 +47,7 @@ function GemIcon() {
 
 function PeopleIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="h-[1.15rem] w-[1.15rem] shrink-0" fill="currentColor" aria-hidden>
+    <svg viewBox="0 0 24 24" className="h-6 w-6 shrink-0" fill="currentColor" aria-hidden>
       <path d="M8.5 11.25a3.25 3.25 0 100-6.5 3.25 3.25 0 000 6.5zM15.75 12a2.75 2.75 0 100-5.5 2.75 2.75 0 000 5.5zM3.75 18.5c0-2.4 2.35-4.25 4.75-4.25h.5c1.55 0 2.95.75 3.85 1.9.7-.7 1.65-1.15 2.7-1.15h.5c2.15 0 4.2 1.55 4.2 3.75v.75c0 .55-.45 1-1 1H4.75c-.55 0-1-.45-1-1v-1z" />
     </svg>
   );
@@ -53,7 +55,7 @@ function PeopleIcon() {
 
 function DiscordIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="h-[1.15rem] w-[1.15rem] shrink-0" fill="currentColor" aria-hidden>
+    <svg viewBox="0 0 24 24" className="h-6 w-6 shrink-0" fill="currentColor" aria-hidden>
       <path d="M19.27 5.33C17.94 4.71 16.5 4.26 15 4a.09.09 0 00-.07.03c-.18.33-.39.76-.53 1.09a16.09 16.09 0 00-4.8 0c-.14-.34-.37-.76-.54-1.09a.09.09 0 00-.07-.03c-1.5.26-2.93.71-4.27 1.33a.08.08 0 00-.04.03C2.2 9.12 1.4 12.8 1.8 16.43a.1.1 0 00.04.07c1.8 1.32 3.53 2.12 5.24 2.65a.1.1 0 00.1-.03c.4-.55.76-1.13 1.07-1.74a.09.09 0 00-.05-.12 10.7 10.7 0 01-1.52-.73.09.09 0 01-.01-.15c.1-.08.2-.16.3-.24a.09.09 0 01.09-.01c3.2 1.46 6.66 1.46 9.82 0a.09.09 0 01.1.01c.1.08.2.17.3.25a.09.09 0 01-.01.14c-.48.29-.99.53-1.52.73a.09.09 0 00-.05.13c.32.61.68 1.19 1.07 1.74a.09.09 0 00.1.03c1.72-.53 3.45-1.33 5.25-2.65a.1.1 0 00.04-.07c.48-4.21-.8-7.86-3.38-11.07a.07.07 0 00-.03-.03zM8.52 14.91c-.97 0-1.77-.89-1.77-1.98 0-1.09.79-1.98 1.77-1.98 1 0 1.78.9 1.77 1.98 0 1.09-.79 1.98-1.77 1.98zm6.97 0c-.97 0-1.77-.89-1.77-1.98 0-1.09.79-1.98 1.77-1.98 1 0 1.78.9 1.77 1.98 0 1.09-.77 1.98-1.77 1.98z" />
     </svg>
   );
@@ -74,6 +76,7 @@ function DashboardShellInner({
   userName = "User",
   bootcampName = null,
   isAdmin = false,
+  nextClassLabel = null,
 }: {
   children: React.ReactNode;
   xpTotal?: number;
@@ -81,6 +84,7 @@ function DashboardShellInner({
   userName?: string;
   bootcampName?: string | null;
   isAdmin?: boolean;
+  nextClassLabel?: string | null;
 }) {
   const { practiceActive } = usePracticeSession();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -114,7 +118,7 @@ function DashboardShellInner({
   if (practiceActive) {
     return (
       <div className="flex h-[100dvh] overflow-hidden bg-white font-sans">
-        <div className="min-h-0 min-w-0 flex-1 overflow-hidden bg-white">
+        <div className="min-h-0 min-w-0 flex-1 overflow-hidden bg-white lg:rounded-tl-[28px] lg:border-l-2 lg:border-t-2 lg:border-arc-line">
           {children}
         </div>
       </div>
@@ -169,8 +173,9 @@ function DashboardShellInner({
       </div>
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        <header className="shrink-0 bg-white pt-3 sm:pt-4 lg:pt-5">
-          <div className="mx-auto flex h-12 w-full max-w-6xl items-center gap-2 px-5 sm:h-14 sm:gap-3 sm:px-10 md:px-16 lg:px-24 xl:px-32">
+        <header className="shrink-0 bg-white px-3 py-1 sm:px-5 lg:px-1">
+          <div className="w-full">
+            <div className="flex h-12 w-full items-center gap-2 sm:gap-3">
             <button
               type="button"
               onClick={() => setMobileNavOpen(true)}
@@ -181,30 +186,43 @@ function DashboardShellInner({
               <MenuIcon />
             </button>
 
+            <NavbarSearch />
+
             <div className="ml-auto flex min-w-0 items-center justify-end gap-1.5 sm:gap-2.5">
-              <Link
-                href="/leaderboard"
-                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#E5E7EB] bg-transparent text-[#71717A] transition hover:bg-arc-soft lg:w-auto lg:gap-2 lg:px-4"
-                title="Leaderboard"
-              >
+              {nextClassLabel ? (
+                <Link
+                  href="/sessions"
+                  className="hidden h-10 min-w-0 max-w-[22rem] items-center gap-2 rounded-2xl bg-gradient-to-r from-[#0BAA5A] to-[#62C934] px-2.5 text-white shadow-sm transition hover:brightness-[0.98] md:flex lg:max-w-[26rem] lg:px-3"
+                  title={nextClassLabel}
+                >
+                  <span className="relative flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/15">
+                    <span className="h-2 w-2 rounded-full bg-white" />
+                    <span className="absolute h-2 w-2 animate-ping rounded-full bg-white/70" />
+                  </span>
+                  <span className="min-w-0 flex-1 truncate font-sans text-xs font-semibold lg:text-[13px]">
+                    {nextClassLabel}
+                  </span>
+                  <span className="hidden h-7 shrink-0 items-center rounded-xl bg-[#E1FF91] px-2.5 font-sans text-xs font-semibold text-[#164E2B] xl:inline-flex">
+                    View session
+                  </span>
+                </Link>
+              ) : null}
+
+              <Link href="/leaderboard" className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[#8A8A8A] transition hover:bg-arc-soft hover:text-[#0A0A0A]" title="Leaderboard">
                 <PeopleIcon />
-                <span className="hidden font-sans text-[15px] font-medium lg:inline">
-                  Leaderboard
-                </span>
               </Link>
 
               <a
                 href="https://discord.gg/fbC6DmmNNt"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#DDD6FE] bg-transparent text-[#A78BFA] transition hover:bg-[#F5F3FF] lg:w-auto lg:gap-2 lg:px-4"
+                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[#A78BFA] transition hover:bg-[#F5F3FF]"
                 title="Discord"
               >
                 <DiscordIcon />
-                <span className="hidden font-sans text-[15px] font-medium lg:inline">
-                  Discord
-                </span>
               </a>
+
+              <NotificationsMenu />
 
               <div
                 className="inline-flex h-10 shrink-0 items-stretch overflow-hidden rounded-full border border-[#E5E7EB] bg-transparent"
@@ -225,10 +243,11 @@ function DashboardShellInner({
                 </div>
               </div>
             </div>
+            </div>
           </div>
         </header>
 
-        <div className="min-h-0 min-w-0 flex-1 overflow-hidden bg-white">
+        <div className="min-h-0 min-w-0 flex-1 overflow-hidden bg-white lg:mx-1 lg:mb-1.5 lg:rounded-t-[28px] lg:border-2 lg:border-arc-line">
           {children}
         </div>
       </div>
@@ -243,6 +262,7 @@ export default function DashboardShell({
   userName = "User",
   bootcampName = null,
   isAdmin = false,
+  nextClassLabel = null,
 }: {
   children: React.ReactNode;
   xpTotal?: number;
@@ -250,6 +270,7 @@ export default function DashboardShell({
   userName?: string;
   bootcampName?: string | null;
   isAdmin?: boolean;
+  nextClassLabel?: string | null;
 }) {
   return (
     <PracticeSessionProvider>
@@ -259,6 +280,7 @@ export default function DashboardShell({
         userName={userName}
         bootcampName={bootcampName}
         isAdmin={isAdmin}
+        nextClassLabel={nextClassLabel}
       >
         {children}
       </DashboardShellInner>

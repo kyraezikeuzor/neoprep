@@ -3,6 +3,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import MarketingNavbar from "@/components/MarketingNavbar";
+import { typography } from "@/lib/typography";
 
 /** Flip to true when Pricing should return on the landing page. */
 const SHOW_PRICING = false;
@@ -110,50 +112,7 @@ export default function LandingPage() {
 
   return (
     <div className={`landing-page min-h-[100dvh] bg-white font-dm ${ink}`}>
-      {/* Header */}
-      <header className={`sticky top-0 z-40 border-b-2 border-[#E5E5E5] bg-white`}>
-        <div className="mx-auto flex h-14 max-w-[70rem] items-center justify-between px-6 sm:px-10 lg:px-14">
-          <Link href="/" className="flex items-center gap-2">
-            <Image
-              src="/neoprep-logo.png"
-              alt="Tutormigo"
-              width={28}
-              height={28}
-              className="h-7 w-7 rounded-lg object-cover"
-              priority
-            />
-            <span className={`text-lg font-medium ${headingTrack} ${ink}`}>Tutormigo</span>
-          </Link>
-          <nav className={`hidden items-center gap-6 text-base font-medium ${muted} md:flex`}>
-            <a href="#platform" className="transition hover:text-[#111111]">
-              Platform
-            </a>
-            <a href="#steps" className="transition hover:text-[#111111]">
-              How it works
-            </a>
-            <a href="#reviews" className="transition hover:text-[#111111]">
-              Reviews
-            </a>
-            <a href="#faqs" className="transition hover:text-[#111111]">
-              FAQs
-            </a>
-          </nav>
-          <div className="flex items-center gap-2.5">
-            <Link
-              href="/login"
-              className="rounded-full bg-[#F4F4F5] px-5 py-2.5 text-base font-medium text-[#52525B] transition hover:bg-[#EBEBED]"
-            >
-              Log in
-            </Link>
-            <Link
-              href="/login"
-              className="rounded-full border-2 border-[#18181B] bg-[#18181B] px-5 py-2.5 text-base font-medium text-white transition hover:bg-[#3F3F46]"
-            >
-              Join free platform
-            </Link>
-          </div>
-        </div>
-      </header>
+      <MarketingNavbar currentPage="home" />
 
       {/* Hero — mentor-style card, circular photo + score by name */}
       <section className="bg-white">
@@ -162,7 +121,7 @@ export default function LandingPage() {
             <p className="mb-3 inline-flex rounded-full border-2 border-[#E4E4E7] bg-white px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[#71717A]">
               Free platform
             </p>
-            <h1 className={`text-4xl font-semibold leading-[1.1] tracking-wide text-arc-ink sm:text-5xl lg:text-[3.25rem]`}>
+            <h1 className={typography.marketingHeroTitle}>
               Get better at the SAT, one question at a time.
             </h1>
             <p className="landing-body mt-5 text-base font-normal leading-relaxed text-[#71717A] sm:text-lg">
@@ -212,7 +171,7 @@ export default function LandingPage() {
               </div>
 
               <div className="px-1 pt-4 pb-0.5 sm:px-1.5">
-                <h2 className={`text-xl font-medium ${headingTrack} text-arc-ink sm:text-2xl`}>
+                <h2 className={typography.marketingItemTitle}>
                   Learn from a 1560 scorer.
                 </h2>
                 <p className="landing-body mt-1.5 text-sm leading-relaxed text-[#71717A]">
@@ -273,7 +232,7 @@ export default function LandingPage() {
       {/* Three steps — sleek split cards, flat borders, muted numbers */}
       <section id="steps" className="border-t-2 border-[#E5E5E5] bg-white py-16 sm:py-20">
         <div className="mx-auto max-w-[70rem] px-6 sm:px-10 lg:px-14">
-          <h2 className={`text-center text-3xl font-medium ${headingTrack} ${ink} sm:text-4xl`}>
+          <h2 className={`text-center ${typography.marketingSectionTitle}`}>
             Three steps to your dream score.
           </h2>
           <div className="mt-12 grid gap-5 sm:grid-cols-3 sm:gap-6">
@@ -291,7 +250,7 @@ export default function LandingPage() {
                 </div>
                 <div className="flex flex-1 flex-col px-6 pb-7 pt-6">
                   <p className="text-sm font-medium tabular-nums text-[#D1D5DB]">{step.n}</p>
-                  <h3 className={`mt-1 text-xl font-medium ${headingTrack} ${ink}`}>{step.title}</h3>
+                  <h3 className={`mt-1 ${typography.marketingItemTitle}`}>{step.title}</h3>
                   <p className={`landing-body mt-2 text-sm font-normal leading-relaxed ${muted}`}>{step.desc}</p>
                 </div>
               </article>
@@ -303,7 +262,7 @@ export default function LandingPage() {
       {/* Testimonials carousel */}
       <section id="reviews" className="border-t-2 border-[#E5E5E5] bg-white py-16 sm:py-20">
         <div className="mx-auto max-w-3xl px-6 text-center sm:px-10 lg:px-14">
-          <h2 className={`text-3xl font-medium ${headingTrack} ${ink} sm:text-4xl`}>
+          <h2 className={typography.marketingSectionTitle}>
             What students are saying
           </h2>
 
@@ -363,7 +322,7 @@ export default function LandingPage() {
       {SHOW_PRICING && (
         <section id="pricing" className={`border-t-2 border-[#E5E5E5] bg-white py-16 sm:py-20`}>
           <div className="mx-auto max-w-[70rem] px-6 sm:px-10 lg:px-14">
-            <h2 className={`text-center text-3xl font-medium ${headingTrack} ${ink} sm:text-4xl`}>
+            <h2 className={`text-center ${typography.marketingSectionTitle}`}>
               Pricing
             </h2>
             <p className={`landing-body mt-3 text-center text-base ${muted}`}>
@@ -378,7 +337,7 @@ export default function LandingPage() {
         <section className="bg-white py-12">
           <div className="mx-auto max-w-3xl px-6 sm:px-10 lg:px-14">
             <div className={`rounded-3xl ${border} bg-white p-6 sm:p-8`}>
-              <h2 className={`text-xl font-medium ${headingTrack} ${ink}`}>Have an SAT fee waiver?</h2>
+              <h2 className={typography.marketingItemTitle}>Have an SAT fee waiver?</h2>
               <p className={`landing-body mt-2 text-sm leading-relaxed ${muted}`}>
                 Details for fee-waiver support will be shared when paid plans launch.
               </p>
@@ -411,7 +370,7 @@ export default function LandingPage() {
       {/* FAQs — Inter throughout */}
       <section id="faqs" className="landing-faqs border-t-2 border-[#E5E5E5] bg-white py-16 sm:py-20">
         <div className="mx-auto max-w-3xl px-6 sm:px-10 lg:px-14">
-          <h2 className={`text-3xl font-medium ${headingTrack} ${ink} sm:text-4xl`}>
+          <h2 className={typography.marketingSectionTitle}>
             Frequently asked questions
           </h2>
           <div className={`mt-8 divide-y-2 divide-[#E5E5E5] border-y-2 border-[#E5E5E5]`}>

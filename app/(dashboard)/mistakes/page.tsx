@@ -76,7 +76,7 @@ export default async function MistakesPage() {
                     </p>
                     <p className="arc-card-hint mt-3">{formatWhen(item.attempted_at)}</p>
                   </div>
-                  <span className="relative z-10 inline-flex min-h-9 shrink-0 items-center justify-center rounded-full border border-arc-line bg-white px-3 py-1 font-sans text-xs font-medium text-[#8F8F98]">
+                  <span className="relative z-10 inline-flex min-h-9 shrink-0 items-center justify-center rounded-full border border-arc-line bg-white px-3 py-1 font-sans text-xs font-medium text-arc-muted">
                     Retry
                   </span>
                 </div>

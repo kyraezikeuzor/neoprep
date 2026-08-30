@@ -3,6 +3,7 @@
 import * as admin from "@/app/actions/bootcamp/admin";
 import * as auth from "@/app/actions/bootcamp/auth";
 import * as student from "@/app/actions/bootcamp/student";
+import * as adaptive from "@/app/actions/bootcamp/adaptive";
 
 export type {
   AdminActiveSubscription,
@@ -21,6 +22,8 @@ export type {
   BootcampSummary,
   ProfileRole,
   StudentNextSession,
+  RoadmapLiveSession,
+  RoadmapSessionData,
   StudentSessionListItem,
   StudentSessionsPageData,
 } from "@/app/actions/bootcamp/types";
@@ -55,6 +58,12 @@ export async function getStudentSessionsPageData(
   return student.getStudentSessionsPageData(...args);
 }
 
+export async function getStudentRoadmapSessions(
+  ...args: Parameters<typeof student.getStudentRoadmapSessions>
+) {
+  return student.getStudentRoadmapSessions(...args);
+}
+
 export async function getBootcampByJoinCode(
   ...args: Parameters<typeof student.getBootcampByJoinCode>
 ) {
@@ -84,6 +93,9 @@ export async function listStudentAssignments(
 ) {
   return student.listStudentAssignments(...args);
 }
+
+export async function generateNextRoadmapAssignment(...args: Parameters<typeof student.generateNextRoadmapAssignment>) { return student.generateNextRoadmapAssignment(...args); }
+export async function createAdaptiveAssignmentForStudent(...args: Parameters<typeof adaptive.createAdaptiveAssignmentForStudent>) { return adaptive.createAdaptiveAssignmentForStudent(...args); }
 
 export async function getAssignmentForPractice(
   ...args: Parameters<typeof student.getAssignmentForPractice>
@@ -145,8 +157,19 @@ export async function getAdminStudentBootcampDetail(
   return admin.getAdminStudentBootcampDetail(...args);
 }
 
+export async function getAdminStudentDetail(
+  ...args: Parameters<typeof admin.getAdminStudentDetail>
+) {
+  return admin.getAdminStudentDetail(...args);
+}
+
 export async function getAdminMetrics(
   ...args: Parameters<typeof admin.getAdminMetrics>
 ) {
   return admin.getAdminMetrics(...args);
 }
+
+export async function listAdminRoadmapStudents(...args: Parameters<typeof admin.listAdminRoadmapStudents>) { return admin.listAdminRoadmapStudents(...args); }
+export async function generateAdminRoadmapAssignment(...args: Parameters<typeof admin.generateAdminRoadmapAssignment>) { return admin.generateAdminRoadmapAssignment(...args); }
+export async function listAdminLiveClasses(...args: Parameters<typeof admin.listAdminLiveClasses>) { return admin.listAdminLiveClasses(...args); }
+export async function createAdminLiveClass(...args: Parameters<typeof admin.createAdminLiveClass>) { return admin.createAdminLiveClass(...args); }

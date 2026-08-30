@@ -1,6 +1,8 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { FREE_QUESTION_LIMIT_ERROR } from "@/lib/access-policy";
+import { getQuestionAccessForUser } from "@/lib/question-access.server";
 
 export async function submitAttempt(params: {
   questionId: string;
@@ -19,6 +21,27 @@ export async function submitAttempt(params: {
     throw new Error("Not signed in");
   }
 
+  const admin = createAdminClient();
+  const { data: priorAttempt, error: priorAttemptError } = await admin
+    .from("attempts")
+    .select("question_id")
+    .eq("user_id", user.id)
+    .eq("question_id", params.questionId)
+    .limit(1)
+    .maybeSingle();
+
+  if (priorAttemptError) {
+    console.error("submitAttempt prior-attempt error:", priorAttemptError);
+    throw new Error("Could not verify question access");
+  }
+
+  if (!priorAttempt) {
+    const access = await getQuestionAccessForUser(user.id);
+    if (!access.canAccessNewQuestion) {
+      throw new Error(FREE_QUESTION_LIMIT_ERROR);
+    }
+  }
+
   const payload: Record<string, unknown> = {
     user_id: user.id,
     question_id: params.questionId,
@@ -32,7 +55,7 @@ export async function submitAttempt(params: {
 
   // Assignment-linked rows use the service role so RLS on assignment_id
   // cannot block progress saves for bootcamp students.
-  const writer = params.assignmentId ? createAdminClient() : supabase;
+  const writer = params.assignmentId ? admin : supabase;
   const { error } = await writer.from("attempts").insert(payload);
 
   if (error) {

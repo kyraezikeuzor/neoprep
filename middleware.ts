@@ -38,17 +38,15 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Signed-in users never stay on marketing/login — send them into the app
+  // Signed-in users never stay on marketing/auth — send them into the app
   // (or back to a safe in-app `next` target, e.g. /join/CODE).
-  if (user && (request.nextUrl.pathname === "/login" || request.nextUrl.pathname === "/")) {
+  const isAuthPage =
+    request.nextUrl.pathname === "/login" ||
+    request.nextUrl.pathname === "/signup";
+  if (user && (isAuthPage || request.nextUrl.pathname === "/")) {
     const url = request.nextUrl.clone();
     const next = request.nextUrl.searchParams.get("next");
-    if (
-      request.nextUrl.pathname === "/login" &&
-      next &&
-      next.startsWith("/") &&
-      !next.startsWith("//")
-    ) {
+    if (isAuthPage && next && next.startsWith("/") && !next.startsWith("//")) {
       url.pathname = next;
       url.search = "";
     } else {

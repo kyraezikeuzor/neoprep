@@ -1,0 +1,5 @@
+import DashboardPageShell from "@/components/DashboardPageShell";
+import PageHeader from "@/components/PageHeader";
+import { listAdminLiveClasses } from "@/app/actions/bootcamp";
+import { CreateLiveClassForm } from "@/components/admin/RoadmapAdminControls";
+export default async function AdminClassesPage() { const classes = await listAdminLiveClasses(); return <DashboardPageShell><PageHeader title="Live Classes" description="Create standalone classes for every student Roadmap." /><div className="mt-6"><CreateLiveClassForm /></div><div className="mt-6 space-y-3">{classes.map((item) => <article key={item.id} className="arc-card flex flex-wrap items-center justify-between gap-3 p-5"><div><p className="font-medium text-arc-heading">{item.title}</p><p className="text-sm text-[#747474]">{new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short", timeZone: item.timezone }).format(new Date(item.starts_at))} · {item.duration_minutes} min · {item.timezone}</p></div>{item.meeting_url ? <a href={item.meeting_url} className="arc-btn-secondary px-4 py-2" target="_blank">Meeting link</a> : null}</article>)}</div></DashboardPageShell>; }

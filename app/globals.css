@@ -20,38 +20,51 @@ body {
 @layer components {
   .arc-card {
     @apply rounded-2xl border-2 border-arc-line bg-white;
-    color: #3f3f46;
+    color: #747474;
   }
 
   .arc-card-label {
     @apply font-sans text-sm font-normal;
-    color: #8f8f98;
+    color: #747474;
   }
 
   .arc-section-label {
     @apply font-sans text-sm font-normal;
-    color: #8f8f98;
+    color: #747474;
   }
 
   .arc-card-hint {
     @apply font-sans text-sm font-normal;
-    color: #8f8f98;
+    color: #747474;
   }
 
   .arc-btn-primary {
-    @apply inline-flex items-center justify-center rounded-xl bg-arc-accent px-5 py-2.5 font-sans text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex items-center justify-center rounded-xl px-5 py-2.5 font-sans text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-50;
+    background-color: #09b5ff;
   }
 
   .arc-btn-primary:hover {
-    background-color: #1d4ed8;
+    background-color: #0890d4;
+  }
+
+  .arc-btn-dark {
+    @apply inline-flex items-center justify-center rounded-xl px-5 py-2.5 font-sans text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-50;
+    background-color: #0a0a0a;
+  }
+
+  .arc-btn-dark:hover:not(:disabled) {
+    background-color: #2d2d2d;
   }
 
   .arc-btn-secondary {
-    @apply inline-flex items-center justify-center rounded-xl border border-arc-line bg-white px-5 py-2.5 font-sans text-sm font-semibold text-arc-ink transition disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex items-center justify-center rounded-full border border-transparent px-5 py-2.5 font-sans text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50;
+    background-color: #f4f4f5;
+    color: #747474;
   }
 
   .arc-btn-secondary:hover {
-    background-color: #f4f4f5;
+    background-color: #e8e8e8;
+    color: #525252;
   }
 }
 

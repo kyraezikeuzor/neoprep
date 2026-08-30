@@ -1,7 +1,7 @@
 "use server";
 
 import { requireAdmin } from "@/app/actions/bootcamp";
-import { listSkillGenerationSections } from "@/lib/question-generation/server";
+import { listSkillGenerationSections } from "@/lib/generation/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function listSkillGenerationCatalog() {
