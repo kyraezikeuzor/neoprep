@@ -705,29 +705,33 @@ export async function listStudentAssignments(): Promise<AssignmentListItem[]> {
     due_date: string | null;
     created_at: string | null;
     start_date?: string | null;
+    bootcamp_id?: number | null;
+    student_id?: string | null;
   }[] = [];
 
   const withStart = await admin
     .from("assignments")
-    .select("id, title, due_date, created_at, start_date")
+    .select("id, title, due_date, created_at, start_date, bootcamp_id, student_id")
     .or(`student_id.eq.${user.id},bootcamp_id.eq.${membership?.bootcampId ?? -1}`)
     .order("due_date", { ascending: true, nullsFirst: false });
 
   if (withStart.error) {
-    // Production instances without the standalone Roadmap migration reject an
-    // OR filter containing student_id. Fall back to the original bootcamp
-    // query so valid legacy assignments remain visible.
-    if (!membership) return [];
-    const withoutStart = await admin
-      .from("assignments")
-      .select("id, title, due_date, created_at")
-      .eq("bootcamp_id", membership.bootcampId)
-      .order("due_date", { ascending: true, nullsFirst: false });
-    if (withoutStart.error) {
-      console.error("listStudentAssignments error:", withoutStart.error);
+    // Some existing databases have student_id but not start_date. Fetch the
+    // two scopes independently here: the prior fallback returned only
+    // bootcamp rows and made personal Question Sets disappear for enrolled students.
+    const select = "id, title, due_date, created_at, bootcamp_id, student_id";
+    const [personal, bootcamp] = await Promise.all([
+      admin.from("assignments").select(select).eq("student_id", user.id).order("due_date", { ascending: true, nullsFirst: false }),
+      membership
+        ? admin.from("assignments").select(select).eq("bootcamp_id", membership.bootcampId).order("due_date", { ascending: true, nullsFirst: false })
+        : Promise.resolve({ data: [], error: null }),
+    ]);
+    if (personal.error || bootcamp.error) {
+      console.error("listStudentAssignments fallback error:", personal.error || bootcamp.error);
       return [];
     }
-    rows = (withoutStart.data ?? []) as typeof rows;
+    const merged = [...(personal.data ?? []), ...(bootcamp.data ?? [])];
+    rows = [...new Map(merged.map((assignment) => [String(assignment.id), assignment])).values()] as typeof rows;
   } else {
     rows = (withStart.data ?? []) as typeof rows;
   }
@@ -793,6 +797,7 @@ export async function listStudentAssignments(): Promise<AssignmentListItem[]> {
       start_date: startDate,
       question_count: questionIds.size,
       completed_count: completed,
+      source: assignment.student_id === user.id ? "roadmap" : "bootcamp",
     };
   });
 }
