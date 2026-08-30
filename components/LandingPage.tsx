@@ -130,7 +130,7 @@ export default function LandingPage() {
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <Link
-                href="/login"
+                href="/signup"
                 className="inline-flex rounded-full border-2 border-[#27272A] bg-[#27272A] px-6 py-3 text-base font-semibold text-white transition hover:bg-[#3F3F46]"
               >
                 Join free platform
@@ -405,7 +405,7 @@ export default function LandingPage() {
         >
           <p>© {new Date().getFullYear()} Tutormigo</p>
           <div className="flex gap-4">
-            <Link href="/login" className="transition hover:text-[#111111]">
+            <Link href="/signup" className="transition hover:text-[#111111]">
               Join free platform
             </Link>
             <a href="#faqs" className="transition hover:text-[#111111]">

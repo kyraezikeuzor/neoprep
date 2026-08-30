@@ -14,6 +14,8 @@ export type {
   AdminStudentAssignmentDetail,
   AdminStudentBootcampDetail,
   AdminStudentIncorrectQuestion,
+  AdminPracticeTestRunDetail,
+  AdminPracticeTestRunSummary,
   AssignmentDetail,
   AssignmentListItem,
   AssignmentProgressEntry,
@@ -161,6 +163,18 @@ export async function getAdminStudentDetail(
   ...args: Parameters<typeof admin.getAdminStudentDetail>
 ) {
   return admin.getAdminStudentDetail(...args);
+}
+
+export async function getAdminStudentPracticeTests(
+  ...args: Parameters<typeof admin.getAdminStudentPracticeTests>
+) {
+  return admin.getAdminStudentPracticeTests(...args);
+}
+
+export async function getAdminPracticeTestRunDetail(
+  ...args: Parameters<typeof admin.getAdminPracticeTestRunDetail>
+) {
+  return admin.getAdminPracticeTestRunDetail(...args);
 }
 
 export async function getAdminMetrics(

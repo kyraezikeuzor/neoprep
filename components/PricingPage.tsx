@@ -472,7 +472,7 @@ export default function PricingPage() {
                   <li key={feature} className="flex items-start gap-2.5 font-sans text-[15px] leading-5 text-[#525252]"><CheckIcon muted />{feature}</li>
                 ))}
               </ul>
-              <Link href="/login" className="arc-btn-secondary mt-auto h-10 gap-2 px-4 text-sm">
+              <Link href="/signup" className="arc-btn-secondary mt-auto h-10 gap-2 px-4 text-sm">
                 Continue with Free <ArrowIcon />
               </Link>
             </div>
@@ -570,7 +570,7 @@ export default function PricingPage() {
           </h2>
           <p className="relative mx-auto mt-4 max-w-xl font-sans text-lg leading-8 text-white/70">Try Tutormigo for free, then add the Roadmap and live support when you&apos;re ready.</p>
           <div className="relative mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-            <Link href="/login" className="inline-flex min-h-[3.25rem] items-center justify-center gap-2 rounded-xl bg-white px-6 font-sans text-base font-semibold text-[#0A0A0A] transition hover:bg-[#F2F2F2]">Start free <ArrowIcon /></Link>
+            <Link href="/signup" className="inline-flex min-h-[3.25rem] items-center justify-center gap-2 rounded-xl bg-white px-6 font-sans text-base font-semibold text-[#0A0A0A] transition hover:bg-[#F2F2F2]">Start free <ArrowIcon /></Link>
             <button type="button" onClick={() => setShowParentModal(true)} className="inline-flex min-h-[3.25rem] items-center justify-center rounded-xl border-2 border-white/20 px-6 font-sans text-base font-semibold text-white transition hover:bg-white/10">Ask a parent</button>
           </div>
         </div>
