@@ -20,6 +20,26 @@ type MathTextProps = {
   block?: boolean;
 };
 
+/**
+ * Question-bank imports use an invisible separator pair to mark the exact
+ * text the SAT item refers to as underlined. Keep this deliberately small and text-only: the
+ * question bank must never be able to inject arbitrary markup into the page.
+ */
+function splitUnderlinedText(text: string): Array<{ text: string; underlined: boolean }> {
+  const parts: Array<{ text: string; underlined: boolean }> = [];
+  const matcher = /\u2063([\s\S]*?)\u2063/g;
+  let cursor = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = matcher.exec(text)) !== null) {
+    if (match.index > cursor) parts.push({ text: text.slice(cursor, match.index), underlined: false });
+    parts.push({ text: match[1], underlined: true });
+    cursor = matcher.lastIndex;
+  }
+  if (cursor < text.length) parts.push({ text: text.slice(cursor), underlined: false });
+  return parts;
+}
+
 function splitResearchNotes(text: string): {
   introduction: string;
   notes: string[];
@@ -51,7 +71,7 @@ function splitResearchNotes(text: string): {
 
 /** The raw MathJax node. Keep this separate so list detection never changes hook order. */
 function MathTextRaw({ text, className, block = false }: MathTextProps) {
-  const ref = useRef<HTMLDivElement>(null);
+  const ref = useRef<HTMLSpanElement>(null);
   const prepared = prepareForMathJax(text);
   const hasDisplay = prepared.includes("\\[");
   const isBlock = block || hasDisplay;
@@ -91,7 +111,7 @@ function MathTextRaw({ text, className, block = false }: MathTextProps) {
   }, [prepared]);
 
   return (
-    <div
+    <span
       ref={ref}
       className={`math-text${isBlock ? " math-text--display" : ""} ${className ?? ""}`.trim()}
       style={{ display: isBlock ? "block" : "inline" }}
@@ -102,6 +122,24 @@ function MathTextRaw({ text, className, block = false }: MathTextProps) {
 /** Renders text that may contain LaTeX via MathJax. Accepts \(...\) / \[...\]
  * delimiters, and also ASCII caret math (kx^2) which is converted first. */
 export default function MathText(props: MathTextProps) {
+  const underlinedParts = splitUnderlinedText(props.text);
+  if (underlinedParts.some((part) => part.underlined)) {
+    const Tag = props.block ? "div" : "span";
+    return (
+      <Tag className={props.className}>
+        {underlinedParts.map((part, index) =>
+          part.underlined ? (
+            <span key={index} className="underline decoration-1 underline-offset-2">
+              <MathTextRaw text={part.text} />
+            </span>
+          ) : (
+            <MathTextRaw key={index} text={part.text} />
+          )
+        )}
+      </Tag>
+    );
+  }
+
   const researchNotes = splitResearchNotes(props.text);
   if (!researchNotes) return <MathTextRaw {...props} />;
 
