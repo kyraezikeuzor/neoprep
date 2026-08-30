@@ -47,6 +47,15 @@ body {
     background-color: #0890d4;
   }
 
+  .arc-btn-dark {
+    @apply inline-flex items-center justify-center rounded-xl px-5 py-2.5 font-sans text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-50;
+    background-color: #0a0a0a;
+  }
+
+  .arc-btn-dark:hover:not(:disabled) {
+    background-color: #2d2d2d;
+  }
+
   .arc-btn-secondary {
     @apply inline-flex items-center justify-center rounded-full border border-transparent px-5 py-2.5 font-sans text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50;
     background-color: #f4f4f5;
