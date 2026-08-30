@@ -6,6 +6,7 @@ import * as questionBank from "@/app/actions/question-bank";
 import * as stats from "@/app/actions/stats";
 import * as submissions from "@/app/actions/submissions";
 import * as vocabulary from "@/app/actions/vocabulary";
+import * as tests from "@/app/actions/tests";
 
 export type {
   BookmarkedQuestion,
@@ -35,6 +36,7 @@ export type {
   VocabularyEntry,
   VocabularyOverview,
 } from "@/app/actions/vocabulary";
+export type { PracticeTest, PracticeTestPlayer } from "@/app/actions/tests";
 
 export async function getRandomQuestion(
   ...args: Parameters<typeof questionBank.getRandomQuestion>
@@ -185,3 +187,7 @@ export async function getVocabularyPracticeSet(
 ) {
   return vocabulary.getVocabularyPracticeSet(...args);
 }
+
+export async function listPracticeTests(...args: Parameters<typeof tests.listPracticeTests>) { return tests.listPracticeTests(...args); }
+export async function getPracticeTest(...args: Parameters<typeof tests.getPracticeTest>) { return tests.getPracticeTest(...args); }
+export async function savePracticeTestAnswer(...args: Parameters<typeof tests.savePracticeTestAnswer>) { return tests.savePracticeTestAnswer(...args); }
